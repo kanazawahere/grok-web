@@ -245,13 +245,42 @@ function toClientEvent(event: any): unknown {
     return { type: "assistant.delta", text: event.assistantMessageEvent.delta };
   }
   if (event.type === "tool_execution_start") {
-    return { type: "tool.start", toolName: event.toolName, toolCallId: event.toolCallId };
+    return { type: "tool.start", toolName: event.toolName, toolCallId: event.toolCallId, summary: summarizeToolArgs(event.args) };
   }
   if (event.type === "tool_execution_end") {
-    return { type: "tool.end", toolName: event.toolName, toolCallId: event.toolCallId, isError: event.isError };
+    return { type: "tool.end", toolName: event.toolName, toolCallId: event.toolCallId, text: stringifyToolResult(event.result), isError: event.isError };
   }
   if (event.type === "agent_start") return { type: "agent.start" };
   if (event.type === "agent_end") return { type: "agent.end" };
   if (event.type === "message_end") return { type: "message.end" };
   return { type: "pi.event", eventType: event.type };
+}
+
+function summarizeToolArgs(args: any): string {
+  if (!args || typeof args !== "object") return args == null ? "" : String(args);
+  if (typeof args.command === "string") return args.command;
+  if (typeof args.path === "string") return args.path;
+  if (typeof args.oldText === "string" && typeof args.newText === "string") return "edit text replacement";
+  if (Array.isArray(args.edits)) return `${args.edits.length} edit${args.edits.length === 1 ? "" : "s"}`;
+  const entries = Object.entries(args).filter(([, value]) => value != null).slice(0, 3);
+  return entries.map(([key, value]) => `${key}: ${shortToolValue(value)}`).join(" · ");
+}
+
+function shortToolValue(value: unknown): string {
+  if (typeof value === "string") return value.length > 80 ? `${value.slice(0, 77)}…` : value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) return `${value.length} item${value.length === 1 ? "" : "s"}`;
+  if (typeof value === "object" && value) return "object";
+  return "";
+}
+
+function stringifyToolResult(result: unknown): string {
+  if (typeof result === "string") return result;
+  if (Array.isArray(result)) return result.map(stringifyToolResult).filter(Boolean).join("\n");
+  if (result && typeof result === "object") {
+    const text = (result as any).text ?? (result as any).content ?? (result as any).output;
+    if (typeof text === "string") return text;
+    return JSON.stringify(result, null, 2);
+  }
+  return result == null ? "" : String(result);
 }

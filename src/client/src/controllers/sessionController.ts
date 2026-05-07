@@ -1,6 +1,7 @@
 import { api, type CommandResult, type SessionActivity, type SessionInfo, type SessionStatus } from "../api";
 import { appendText, normalizeMessages, textMessage } from "../chatMessages";
 import { GlobalSessionSocket, SessionSocket, type SessionUiEvent } from "../sessionSocket";
+import type { ChatLine, ChatPart } from "../components/shared";
 import type { GetState, SetState, UpdateUrl } from "./types";
 
 export class SessionController {
@@ -139,9 +140,9 @@ export class SessionController {
     if (event.type === "assistant.delta") {
       this.setState({ messages: appendText(messages, "assistant", event.text) });
     } else if (event.type === "tool.start") {
-      this.setState({ messages: [...messages, { role: "tool", parts: [{ type: "toolCall", toolName: event.toolName, summary: "" }] }] });
+      this.setState({ messages: appendPart(messages, "assistant", { type: "toolCall", toolName: event.toolName, summary: event.summary }) });
     } else if (event.type === "tool.end") {
-      this.setState({ messages: [...messages, textMessage("tool", `${event.isError ? "✖" : "✓"} ${event.toolName}`)] });
+      this.setState({ messages: [...messages, { role: "tool", parts: [{ type: "toolResult", toolName: event.toolName, text: event.text, isError: event.isError }] }] });
     } else if (event.type === "status.update") {
       this.applyStatus(event.status);
     } else if (event.type === "activity.update") {
@@ -152,4 +153,10 @@ export class SessionController {
       this.setState({ messages: [...messages, textMessage("system", event.message)] });
     }
   }
+}
+
+function appendPart(messages: ChatLine[], role: ChatLine["role"], part: ChatPart): ChatLine[] {
+  const last = messages.at(-1);
+  if (last?.role === role) return [...messages.slice(0, -1), { ...last, parts: [...last.parts, part] }];
+  return [...messages, { role, parts: [part] }];
 }

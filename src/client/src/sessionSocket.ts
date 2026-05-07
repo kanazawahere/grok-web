@@ -2,8 +2,8 @@ import { globalSessionEvents, sessionEvents, type SessionActivity, type SessionS
 
 export type SessionUiEvent =
   | { type: "assistant.delta"; text: string }
-  | { type: "tool.start"; toolName: string }
-  | { type: "tool.end"; toolName: string; isError: boolean }
+  | { type: "tool.start"; toolName: string; summary: string }
+  | { type: "tool.end"; toolName: string; text: string; isError: boolean }
   | { type: "status.update"; status: SessionStatus }
   | { type: "activity.update"; activity: SessionActivity }
   | { type: "command.output"; level: "info" | "success" | "error"; message: string }
