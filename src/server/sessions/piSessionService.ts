@@ -180,7 +180,10 @@ export class PiSessionService {
 
   async abort(sessionId: string): Promise<void> {
     const active = this.active.get(sessionId);
-    if (active) await active.runtime.session.abort();
+    if (!active) return;
+    await active.runtime.session.abort();
+    this.publishActivity(active.runtime.session, "stopped", "idle");
+    this.publishStatus(active.runtime.session);
   }
 
   stop(sessionId: string): void {

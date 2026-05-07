@@ -12,8 +12,9 @@ export class PromptEditor extends LitElement {
   @property() cwd?: string;
   @property({ type: Boolean }) canSteer = false;
   @property({ type: Boolean }) isCompacting = false;
+  @property({ type: Boolean }) canStop = false;
   @property({ attribute: false }) onSend?: (text: string, streamingBehavior?: "steer" | "followUp") => void;
-  @property({ attribute: false }) onStopSession?: () => void;
+  @property({ attribute: false }) onStop?: () => void;
   @query("textarea") private textarea?: HTMLTextAreaElement;
   @state() private draft = "";
   @state() private completions: CompletionItem[] = [];
@@ -56,7 +57,7 @@ export class PromptEditor extends LitElement {
         <div class="actions">
           <button ?disabled=${this.disabled} title=${queuesInput ? "Queue until the current activity finishes" : "Send message"} @click=${() => { this.send("followUp"); }}>${queuesInput ? "Queue" : "Send"}</button>
           ${this.canSteer && !this.isCompacting ? html`<button ?disabled=${this.disabled} title="Steer the current response before the next model call" @click=${() => { this.send("steer"); }}>Steer</button>` : null}
-          <button ?disabled=${this.disabled} title="Stop only this Pi session from continuing" @click=${() => this.onStopSession?.()}>Stop session</button>
+          <button ?disabled=${this.disabled || !this.canStop} title=${this.canStop ? "Stop current work" : "Nothing running"} @click=${() => this.onStop?.()}>Stop</button>
         </div>
       </footer>
     `;

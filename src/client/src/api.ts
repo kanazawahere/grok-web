@@ -108,6 +108,7 @@ export const api = {
   shell: (sessionId: string, text: string) => request(`/api/sessions/${sessionId}/shell`, parseAccepted, { method: "POST", body: JSON.stringify({ text }) }),
   runCommand: (sessionId: string, text: string) => request(`/api/sessions/${sessionId}/commands/run`, parseCommandResult, { method: "POST", body: JSON.stringify({ text }) }),
   respondToCommand: (sessionId: string, requestId: string, value: string) => request(`/api/sessions/${sessionId}/commands/respond`, parseCommandResult, { method: "POST", body: JSON.stringify({ requestId, value }) }),
+  abort: (sessionId: string) => request(`/api/sessions/${sessionId}/abort`, parseAborted, { method: "POST" }),
   stop: (sessionId: string) => request(`/api/sessions/${sessionId}/stop`, parseStopped, { method: "POST" }),
   archive: (sessionId: string) => request(`/api/sessions/${sessionId}/archive`, parseArchived, { method: "POST" }),
   restore: (sessionId: string) => request(`/api/sessions/${sessionId}/restore`, parseRestored, { method: "POST" }),
@@ -298,6 +299,12 @@ function parseAccepted(value: unknown): { accepted: true } {
   const record = requireRecord(value);
   if (record["accepted"] !== true) throw new Error("Expected accepted response");
   return { accepted: true };
+}
+
+function parseAborted(value: unknown): { aborted: true } {
+  const record = requireRecord(value);
+  if (record["aborted"] !== true) throw new Error("Expected aborted response");
+  return { aborted: true };
 }
 
 function parseStopped(value: unknown): { stopped: true } {

@@ -167,16 +167,13 @@ export class SessionController {
     }
   }
 
-  async stopSession() {
+  async stopActiveWork() {
     const session = this.getState().selectedSession;
     if (!session) return;
     try {
-      await api.stop(session.id);
+      await api.abort(session.id);
     } catch (error) {
       this.setState({ error: String(error) });
-    } finally {
-      this.clearActiveSession();
-      this.updateUrl();
     }
   }
 
