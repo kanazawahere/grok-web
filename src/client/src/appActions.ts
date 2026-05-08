@@ -10,12 +10,14 @@ export interface AppActionContext {
   refreshFiles: () => void | Promise<void>;
   refreshGit: () => void | Promise<void>;
   startSession: () => void | Promise<void>;
+  archiveSession: () => void | Promise<void>;
   stopActiveWork: () => void | Promise<void>;
 }
 
 export function createAppActions(context: AppActionContext): AppAction[] {
   const hasWorkspace = context.state.selectedWorkspace !== undefined;
   const hasSession = context.state.selectedSession !== undefined;
+  const canArchiveSession = hasSession && context.state.selectedSession?.archived !== true;
   const isBusy = isActive(context.state.status);
   return [
     {
@@ -94,6 +96,14 @@ export function createAppActions(context: AppActionContext): AppAction[] {
       group: "Session",
       enabled: hasWorkspace,
       run: context.startSession,
+    },
+    {
+      id: "session.archive",
+      title: "Archive Session",
+      description: "Archive the selected session",
+      group: "Session",
+      enabled: canArchiveSession,
+      run: context.archiveSession,
     },
     {
       id: "session.stop",

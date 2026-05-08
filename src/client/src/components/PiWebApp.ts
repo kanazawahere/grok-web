@@ -187,6 +187,7 @@ export class PiWebApp extends LitElement {
       refreshFiles: () => this.files.refreshFiles(),
       refreshGit: () => this.git.refreshGit(),
       startSession: () => this.withChatScrollTransition(() => this.sessions.startSession()),
+      archiveSession: () => this.sessions.archiveSession(),
       stopActiveWork: () => this.sessions.stopActiveWork(),
     });
   }

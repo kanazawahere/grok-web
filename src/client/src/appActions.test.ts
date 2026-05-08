@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createAppActions } from "./appActions";
 import { initialAppState, type AppState } from "./appState";
+import type { SessionInfo } from "./api";
 
 function createContext(statePatch: Partial<AppState> = {}) {
   const calls: string[] = [];
@@ -13,6 +14,7 @@ function createContext(statePatch: Partial<AppState> = {}) {
     refreshFiles: vi.fn(() => { calls.push("refreshFiles"); }),
     refreshGit: vi.fn(() => { calls.push("refreshGit"); }),
     startSession: vi.fn(() => { calls.push("startSession"); }),
+    archiveSession: vi.fn(() => { calls.push("archiveSession"); }),
     stopActiveWork: vi.fn(() => { calls.push("stopActiveWork"); }),
   };
   return { context, calls };
@@ -25,6 +27,7 @@ describe("createAppActions", () => {
 
     expect(actions.find((action) => action.id === "view.files")?.enabled).toBe(false);
     expect(actions.find((action) => action.id === "session.start")?.enabled).toBe(false);
+    expect(actions.find((action) => action.id === "session.archive")?.enabled).toBe(false);
     expect(actions.find((action) => action.id === "session.stop")?.enabled).toBe(false);
     expect(actions.find((action) => action.id === "actions.show")?.enabled).toBeUndefined();
   });
@@ -49,6 +52,24 @@ describe("createAppActions", () => {
     expect(calls).toEqual(["refreshGit"]);
   });
 
+  it("enables archive for the selected active session", () => {
+    const selectedSession = testSession();
+    const active = createAppActions(createContext({ selectedSession }).context);
+    const archived = createAppActions(createContext({ selectedSession: { ...selectedSession, archived: true } }).context);
+
+    expect(active.find((action) => action.id === "session.archive")?.enabled).toBe(true);
+    expect(archived.find((action) => action.id === "session.archive")?.enabled).toBe(false);
+  });
+
+  it("runs archive on the selected session", () => {
+    const { context, calls } = createContext({ selectedSession: testSession() });
+    const action = createAppActions(context).find((candidate) => candidate.id === "session.archive");
+
+    if (action !== undefined) void action.run();
+
+    expect(calls).toEqual(["archiveSession"]);
+  });
+
   it("only enables stop while a session is actively working", () => {
     const selectedSession = testSession();
     const inactive = createAppActions(createContext({ selectedSession }).context);
@@ -63,7 +84,7 @@ function testWorkspace(): AppState["selectedWorkspace"] {
   return { id: "w1", projectId: "p1", path: "/tmp/project", label: "main", isMain: true, isGitWorktree: false };
 }
 
-function testSession(): AppState["selectedSession"] {
+function testSession(): SessionInfo {
   return { id: "s1", path: "/tmp/project/.pi/sessions/s1", cwd: "/tmp/project", created: "now", modified: "now", messageCount: 0, firstMessage: "" };
 }
 
