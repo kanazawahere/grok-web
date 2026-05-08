@@ -15,7 +15,7 @@ import { BUILTIN_COMMANDS } from "./builtinCommands.js";
 import { SessionCommandService } from "./sessionCommandService.js";
 import { SessionArchiveStore } from "./sessionArchiveStore.js";
 import type { ActiveSession } from "./sessionRuntimeStore.js";
-import { generateShortSessionName } from "./sessionNameGenerator.js";
+import { fallbackSessionName, generateShortSessionName } from "./sessionNameGenerator.js";
 
 function noop(): void {
   // Intentionally empty default unsubscribe callback.
@@ -263,12 +263,16 @@ export class PiSessionService {
     if (model === undefined) return;
 
     void generateShortSessionName(this.modelRegistry, model, firstMessage).then((name) => {
-      if (name === undefined || session.sessionName !== undefined) return;
-      session.setSessionName(name);
-      this.publishSessionName(session);
+      this.applyGeneratedSessionName(session, name ?? fallbackSessionName(firstMessage));
     }).catch(() => {
-      // Session naming is best-effort and must not affect prompt handling.
+      this.applyGeneratedSessionName(session, fallbackSessionName(firstMessage));
     });
+  }
+
+  private applyGeneratedSessionName(session: AgentSession, name: string | undefined): void {
+    if (name === undefined || session.sessionName !== undefined) return;
+    session.setSessionName(name);
+    this.publishSessionName(session);
   }
 
   private publishSessionName(session: AgentSession): void {
