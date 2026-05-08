@@ -28,7 +28,7 @@ import "./ProjectDialog";
 import "./WorkspacePanel";
 import { appStyles } from "./shared";
 
-@customElement("pi-web-poc")
+@customElement("pi-web-app")
 export class PiWebApp extends LitElement {
   @state() private state: AppState = initialAppState();
   @query("chat-view") private chatView?: ChatView;
@@ -196,7 +196,7 @@ export class PiWebApp extends LitElement {
     });
     return html`
       <header>
-        <strong>Pi Web POC</strong>
+        <strong>Pi Web</strong>
         <button title="Show Actions" aria-label="Show Actions" @click=${() => { this.setState({ actionPaletteOpen: true }); }}>Actions</button>
       </header>
       <project-list .projects=${this.state.projects} .selected=${this.state.selectedProject} .onSelect=${(project: Project) => this.withChatScrollTransition(() => this.workspaces.selectProject(project))} .onClose=${(project: Project) => this.projects.closeProject(project.id)}></project-list>
