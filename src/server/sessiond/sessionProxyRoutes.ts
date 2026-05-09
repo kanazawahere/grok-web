@@ -31,6 +31,7 @@ export function registerSessionProxyRoutes(app: FastifyInstance, daemon = new Se
   app.post<{ Params: { sessionId: string } }>("/api/sessions/:sessionId/stop", (request, reply) => proxy(request, reply));
   app.post<{ Params: { sessionId: string } }>("/api/sessions/:sessionId/archive", (request, reply) => proxy(request, reply));
   app.post<{ Params: { sessionId: string } }>("/api/sessions/:sessionId/restore", (request, reply) => proxy(request, reply));
+  app.post<{ Params: { sessionId: string } }>("/api/sessions/:sessionId/detach-parent", (request, reply) => proxy(request, reply));
 
   app.get<{ Params: { sessionId: string } }>("/api/sessions/:sessionId/events", { websocket: true }, (socket, request) => {
     bridgeSockets(socket, daemon.connectWebSocket(`/sessions/${request.params.sessionId}/events`));

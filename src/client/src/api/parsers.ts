@@ -75,6 +75,7 @@ export function parseWorkspace(value: unknown): Workspace {
 export function parseSessionInfo(value: unknown): SessionInfo {
   const record = requireRecord(value);
   const name = optionalString(record, "name");
+  const parentSessionPath = optionalString(record, "parentSessionPath");
   const archivedAt = optionalString(record, "archivedAt");
   return {
     id: requireString(record, "id"),
@@ -85,6 +86,7 @@ export function parseSessionInfo(value: unknown): SessionInfo {
     modified: requireString(record, "modified"),
     messageCount: requireNumber(record, "messageCount"),
     firstMessage: requireString(record, "firstMessage"),
+    ...(parentSessionPath === undefined ? {} : { parentSessionPath }),
     ...(record["archived"] === true ? { archived: true } : {}),
     ...(archivedAt === undefined ? {} : { archivedAt }),
   };
@@ -251,6 +253,12 @@ export function parseRestored(value: unknown): { restored: true } {
   const record = requireRecord(value);
   if (record["restored"] !== true) throw new Error("Expected restored response");
   return { restored: true };
+}
+
+export function parseDetached(value: unknown): { detached: true } {
+  const record = requireRecord(value);
+  if (record["detached"] !== true) throw new Error("Expected detached response");
+  return { detached: true };
 }
 
 function optionalNumber(record: Record<string, unknown>, key: string): number | undefined {

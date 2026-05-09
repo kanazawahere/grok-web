@@ -7,6 +7,7 @@ import {
   parseArchived,
   parseClosed,
   parseCommandResult,
+  parseDetached,
   parseFileContentResponse,
   parseFileSuggestion,
   parseFileTreeResponse,
@@ -51,6 +52,7 @@ export const sessionsApi = {
   stop: (sessionId: string) => request(`/api/sessions/${sessionId}/stop`, parseStopped, { method: "POST" }),
   archive: (sessionId: string) => request(`/api/sessions/${sessionId}/archive`, parseArchived, { method: "POST" }),
   restore: (sessionId: string) => request(`/api/sessions/${sessionId}/restore`, parseRestored, { method: "POST" }),
+  detachParent: (sessionId: string) => request(`/api/sessions/${sessionId}/detach-parent`, parseDetached, { method: "POST" }),
 };
 
 export const terminalsApi = {

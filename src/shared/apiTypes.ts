@@ -25,6 +25,7 @@ export interface SessionInfo {
   modified: string;
   messageCount: number;
   firstMessage: string;
+  parentSessionPath?: string;
   archived?: boolean;
   archivedAt?: string;
 }

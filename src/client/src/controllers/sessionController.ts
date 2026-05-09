@@ -193,6 +193,18 @@ export class SessionController {
     }
   }
 
+  async detachParent(session = this.getState().selectedSession) {
+    if (session?.parentSessionPath === undefined) return;
+    try {
+      await api.detachParent(session.id);
+      const detached = { ...session };
+      delete detached.parentSessionPath;
+      this.replaceSession(detached);
+    } catch (error) {
+      this.setState({ error: String(error) });
+    }
+  }
+
   async stopActiveWork() {
     const session = this.getState().selectedSession;
     if (!session) return;

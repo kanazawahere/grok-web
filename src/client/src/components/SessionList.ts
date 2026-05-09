@@ -8,6 +8,12 @@ function sessionLabel(session: SessionInfo): string {
   return session.firstMessage !== "" ? session.firstMessage : session.id.slice(0, 8);
 }
 
+interface SessionRow {
+  session: SessionInfo;
+  depth: number;
+  hasMissingParent: boolean;
+}
+
 @customElement("session-list")
 export class SessionList extends LitElement {
   @property({ attribute: false }) sessions: SessionInfo[] = [];
@@ -26,6 +32,7 @@ export class SessionList extends LitElement {
   };
   @property({ attribute: false }) onArchive?: (session: SessionInfo) => void;
   @property({ attribute: false }) onRestore?: (session: SessionInfo) => void;
+  @property({ attribute: false }) onDetachParent?: (session: SessionInfo) => void;
 
   override connectedCallback(): void {
     super.connectedCallback();
@@ -43,30 +50,34 @@ export class SessionList extends LitElement {
   }
 
   override render() {
-    const active = this.sessions.filter((session) => session.archived !== true);
-    const archived = this.sessions.filter((session) => session.archived === true);
+    const activeRows = sessionRowsForActiveTree(this.sessions);
+    const activeIds = new Set(activeRows.map((row) => row.session.id));
+    const archivedRows = sessionRows(this.sessions.filter((session) => session.archived === true && !activeIds.has(session.id)));
     return html`
       <section>
         <h2>Sessions <button ?disabled=${!this.canStart} @click=${() => this.onStart?.()}>+</button></h2>
-        ${active.map((session) => this.renderSession(session))}
-        ${archived.length > 0 ? html`
-          <h2 class="subheading"><button class="section-toggle" aria-expanded=${String(this.archivedExpanded)} @click=${() => { this.toggleArchived(); }}><span>${this.archivedExpanded ? "▾" : "▸"} Archived</span><small>${archived.length}</small></button></h2>
-          ${this.archivedExpanded ? archived.map((session) => this.renderSession(session)) : null}
+        ${activeRows.map((row) => this.renderSession(row))}
+        ${archivedRows.length > 0 ? html`
+          <h2 class="subheading"><button class="section-toggle" aria-expanded=${String(this.archivedExpanded)} @click=${() => { this.toggleArchived(); }}><span>${this.archivedExpanded ? "▾" : "▸"} Archived</span><small>${archivedRows.length}</small></button></h2>
+          ${this.archivedExpanded ? archivedRows.map((row) => this.renderSession(row)) : null}
         ` : null}
       </section>
     `;
   }
 
-  private renderSession(session: SessionInfo) {
+  private renderSession(row: SessionRow) {
+    const { session } = row;
+    const cappedDepth = Math.min(row.depth, 2);
     return html`
-      <div class="action-row ${this.selected?.id === session.id ? "selected" : ""} ${session.archived === true ? "archived" : ""}">
+      <div class="action-row ${this.selected?.id === session.id ? "selected" : ""} ${session.archived === true ? "archived" : ""}" style=${`--depth:${String(cappedDepth)}`}>
         <button class="action-main" @click=${() => this.onSelect?.(session)}>
-          <span>${sessionLabel(session)}</span><small>${this.renderStatus(session)}${String(session.messageCount)} messages</small>
+          <span>${row.depth > 0 ? html`<span class="tree-marker">↳</span>` : null}${sessionLabel(session)}${row.depth > 2 ? html` <span class="badge">depth ${row.depth}</span>` : null}${row.hasMissingParent ? html` <span class="badge">parent unavailable</span>` : null}</span><small>${this.renderStatus(session)}${String(session.messageCount)} messages</small>
         </button>
         <div class="action-menu">
           <button class="action-menu-toggle" title="Session actions" @click=${(event: MouseEvent) => { event.stopPropagation(); this.toggleMenu(session.id, event.currentTarget); }}>⋯</button>
           ${this.openMenuSessionId === session.id ? html`
             <div class="action-menu-panel" style=${this.menuStyle}>
+              ${session.parentSessionPath !== undefined ? html`<button title="Detach from parent" @click=${() => { this.openMenuSessionId = undefined; this.onDetachParent?.(session); }}>Detach from parent</button>` : null}
               ${session.archived === true
                 ? html`<button title="Restore session" @click=${() => { this.openMenuSessionId = undefined; this.onRestore?.(session); }}>Restore</button>`
                 : html`<button title="Archive session" @click=${() => { this.openMenuSessionId = undefined; this.onArchive?.(session); }}>Archive</button>`}
@@ -108,4 +119,52 @@ export class SessionList extends LitElement {
   }
 
   static override styles = listStyles;
+}
+
+function sessionRowsForActiveTree(sessions: SessionInfo[]): SessionRow[] {
+  const byPath = new Map(sessions.map((session) => [session.path, session]));
+  const visible = new Set<string>();
+  for (const session of sessions) {
+    if (session.archived === true) continue;
+    visible.add(session.id);
+    let parentPath = session.parentSessionPath;
+    const seen = new Set<string>([session.path]);
+    while (parentPath !== undefined && !seen.has(parentPath)) {
+      seen.add(parentPath);
+      const parent = byPath.get(parentPath);
+      if (parent === undefined) break;
+      visible.add(parent.id);
+      parentPath = parent.parentSessionPath;
+    }
+  }
+  return sessionRows(sessions.filter((session) => visible.has(session.id)));
+}
+
+function sessionRows(sessions: SessionInfo[]): SessionRow[] {
+  const byPath = new Map(sessions.map((session) => [session.path, session]));
+  const childrenByPath = new Map<string, SessionInfo[]>();
+  const roots: SessionInfo[] = [];
+  for (const session of sessions) {
+    const parentPath = session.parentSessionPath;
+    const parent = parentPath === undefined ? undefined : byPath.get(parentPath);
+    if (parent === undefined) {
+      roots.push(session);
+      continue;
+    }
+    const children = childrenByPath.get(parent.path) ?? [];
+    children.push(session);
+    childrenByPath.set(parent.path, children);
+  }
+
+  const rows: SessionRow[] = [];
+  const visit = (session: SessionInfo, depth: number, stack: Set<string>) => {
+    if (stack.has(session.path)) return;
+    const parentPath = session.parentSessionPath;
+    rows.push({ session, depth, hasMissingParent: parentPath !== undefined && !byPath.has(parentPath) });
+    const nextStack = new Set(stack);
+    nextStack.add(session.path);
+    for (const child of childrenByPath.get(session.path) ?? []) visit(child, depth + 1, nextStack);
+  };
+  for (const root of roots) visit(root, 0, new Set());
+  return rows;
 }

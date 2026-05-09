@@ -113,6 +113,7 @@ export class SessionCommandService {
 
 function clientSessionFromRuntime(runtime: AgentSessionRuntime): ClientSession {
   const session = runtime.session;
+  const parentSessionPath = typeof session.sessionManager.getHeader === "function" ? session.sessionManager.getHeader()?.parentSession : undefined;
   return {
     id: session.sessionId,
     path: session.sessionFile ?? "",
@@ -122,6 +123,7 @@ function clientSessionFromRuntime(runtime: AgentSessionRuntime): ClientSession {
     modified: new Date().toISOString(),
     messageCount: session.messages.length,
     firstMessage: "",
+    ...(parentSessionPath === undefined ? {} : { parentSessionPath }),
   };
 }
 

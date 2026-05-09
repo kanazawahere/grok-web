@@ -107,7 +107,9 @@ export const listStyles = css`
   .action-row { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; margin: 6px 0; }
   .action-row.selected .action-main, .action-row.selected .action-menu-toggle { border-color: #58a6ff; background: #0d2847; }
   .action-row.archived .action-main { color: #8b949e; }
-  .action-main { min-width: 0; text-align: left; border-top-right-radius: 0; border-bottom-right-radius: 0; }
+  .action-main { min-width: 0; text-align: left; border-top-right-radius: 0; border-bottom-right-radius: 0; padding-left: calc(9px + var(--depth, 0) * 16px); }
+  .tree-marker { color: #6e7681; margin-right: 5px; }
+  .badge { display: inline-block; margin-left: 5px; border: 1px solid #30363d; border-radius: 999px; color: #8b949e; padding: 0 5px; font-size: 11px; font-weight: 400; }
   .action-menu { position: relative; align-self: stretch; }
   .action-menu-toggle { display: grid; place-items: center; height: 100%; min-width: 32px; padding: 0; color: #8b949e; border-left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; }
   .action-menu-toggle:hover { color: #e6edf3; background: #21262d; }

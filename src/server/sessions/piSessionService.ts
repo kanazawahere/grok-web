@@ -1,3 +1,4 @@
+import { readFile, writeFile } from "node:fs/promises";
 import {
   AuthStorage,
   createAgentSessionFromServices,
@@ -115,6 +116,7 @@ export class PiSessionService {
         modified: s.modified.toISOString(),
         messageCount: s.messageCount,
         firstMessage: s.firstMessage,
+        ...(s.parentSessionPath === undefined ? {} : { parentSessionPath: s.parentSessionPath }),
         ...(archived === undefined ? {} : { archived: true, archivedAt: archived.archivedAt }),
       };
     });
@@ -232,6 +234,13 @@ export class PiSessionService {
 
   async restore(sessionId: string): Promise<void> {
     await this.archiveStore.restore(sessionId);
+  }
+
+  async detachParent(sessionId: string): Promise<void> {
+    const session = await this.getOrOpen(sessionId);
+    const sessionFile = session.sessionFile;
+    if (sessionFile === undefined || sessionFile === "") throw new Error("Session is not persisted");
+    await clearParentSession(sessionFile);
   }
 
   async abort(sessionId: string): Promise<void> {
@@ -412,6 +421,18 @@ export class PiSessionService {
       ...(contextUsage === undefined ? {} : { contextUsage }),
     };
   }
+}
+
+async function clearParentSession(sessionFile: string): Promise<void> {
+  const content = await readFile(sessionFile, "utf8");
+  const newlineIndex = content.indexOf("\n");
+  const firstLine = newlineIndex === -1 ? content : content.slice(0, newlineIndex);
+  const rest = newlineIndex === -1 ? "" : content.slice(newlineIndex);
+  const header: unknown = JSON.parse(firstLine);
+  if (!isRecord(header) || header["type"] !== "session") throw new Error("Invalid session file header");
+  if (header["parentSession"] === undefined) return;
+  delete header["parentSession"];
+  await writeFile(sessionFile, `${JSON.stringify(header)}${rest}`, "utf8");
 }
 
 function userTextMessage(text: string): { role: "user"; content: string } {
