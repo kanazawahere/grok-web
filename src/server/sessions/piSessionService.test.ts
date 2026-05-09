@@ -33,7 +33,7 @@ function asRuntimeFactoryResult(runtime: AgentSessionRuntime): RuntimeFactoryRes
 
 function fakeRuntime(sessionId = "session-1") {
   const promptCalls: { text: string; options: unknown }[] = [];
-  const calls = { abort: 0, dispose: 0, prompt: promptCalls };
+  const calls = { abort: 0, clearQueue: 0, dispose: 0, prompt: promptCalls };
   const session = {
     sessionId,
     sessionFile: `/tmp/${sessionId}.jsonl`,
@@ -57,6 +57,12 @@ function fakeRuntime(sessionId = "session-1") {
       calls.abort += 1;
       return Promise.resolve();
     },
+    clearQueue: () => {
+      calls.clearQueue += 1;
+      return { steering: [], followUp: [] };
+    },
+    getSteeringMessages: () => [],
+    getFollowUpMessages: () => [],
   } as unknown as AgentSession;
   const runtime = {
     session,
@@ -143,6 +149,119 @@ describe("PiSessionService", () => {
     await service.prompt("prompt-session", "Build the thing");
 
     expect(fake.calls.prompt).toEqual([{ text: "Build the thing", options: undefined }]);
+    await service.dispose();
+  });
+
+  it("includes queued message details in session status", async () => {
+    const fake = fakeRuntime("status-session");
+    (fake.runtime.session as unknown as { pendingMessageCount: number; getSteeringMessages: () => string[]; getFollowUpMessages: () => string[] }).pendingMessageCount = 2;
+    (fake.runtime.session as unknown as { getSteeringMessages: () => string[] }).getSteeringMessages = () => ["adjust this turn"];
+    (fake.runtime.session as unknown as { getFollowUpMessages: () => string[] }).getFollowUpMessages = () => ["then do this"];
+    const service = new PiSessionService(new CapturingSessionEventHub(), {
+      createRuntime: () => Promise.resolve(asRuntimeFactoryResult(fake.runtime)),
+      createAgentRuntime: () => Promise.resolve(fake.runtime),
+      sessionManager: {
+        create: () => fakeSessionManager(),
+        list: () => Promise.resolve([]),
+        listAll: () => Promise.resolve([{ id: "status-session", path: "/sessions/status-session.jsonl", cwd: "/workspace", created: new Date("2026-01-01T00:00:00.000Z"), modified: new Date("2026-01-01T00:01:00.000Z"), messageCount: 0, firstMessage: "", allMessagesText: "" }]),
+        open: () => fakeSessionManager(),
+      },
+      heartbeatIntervalMs: 60_000,
+    });
+
+    await expect(service.status("status-session")).resolves.toMatchObject({
+      pendingMessageCount: 2,
+      queuedMessages: [{ kind: "steer", text: "adjust this turn" }, { kind: "followUp", text: "then do this" }],
+    });
+    await service.dispose();
+  });
+
+  it("does not enqueue duplicate queued message text", async () => {
+    const fake = fakeRuntime("dedupe-session");
+    (fake.runtime.session as unknown as { isStreaming: boolean; pendingMessageCount: number; getFollowUpMessages: () => string[] }).isStreaming = true;
+    (fake.runtime.session as unknown as { pendingMessageCount: number }).pendingMessageCount = 1;
+    (fake.runtime.session as unknown as { getFollowUpMessages: () => string[] }).getFollowUpMessages = () => ["already queued"];
+    const service = new PiSessionService(new CapturingSessionEventHub(), {
+      createRuntime: () => Promise.resolve(asRuntimeFactoryResult(fake.runtime)),
+      createAgentRuntime: () => Promise.resolve(fake.runtime),
+      sessionManager: {
+        create: () => fakeSessionManager(),
+        list: () => Promise.resolve([]),
+        listAll: () => Promise.resolve([{ id: "dedupe-session", path: "/sessions/dedupe-session.jsonl", cwd: "/workspace", created: new Date("2026-01-01T00:00:00.000Z"), modified: new Date("2026-01-01T00:01:00.000Z"), messageCount: 0, firstMessage: "", allMessagesText: "" }]),
+        open: () => fakeSessionManager(),
+      },
+      heartbeatIntervalMs: 60_000,
+    });
+
+    await service.prompt("dedupe-session", "already queued", "followUp");
+
+    expect(fake.calls.prompt).toEqual([]);
+    await service.dispose();
+  });
+
+  it("does not append queued prompts to the transcript before delivery", async () => {
+    const hub = new CapturingSessionEventHub();
+    const fake = fakeRuntime("queued-session");
+    (fake.runtime.session as unknown as { isStreaming: boolean }).isStreaming = true;
+    const service = new PiSessionService(hub, {
+      createRuntime: () => Promise.resolve(asRuntimeFactoryResult(fake.runtime)),
+      createAgentRuntime: () => Promise.resolve(fake.runtime),
+      sessionManager: {
+        create: () => fakeSessionManager(),
+        list: () => Promise.resolve([]),
+        listAll: () => Promise.resolve([{ id: "queued-session", path: "/sessions/queued-session.jsonl", cwd: "/workspace", created: new Date("2026-01-01T00:00:00.000Z"), modified: new Date("2026-01-01T00:01:00.000Z"), messageCount: 0, firstMessage: "", allMessagesText: "" }]),
+        open: () => fakeSessionManager(),
+      },
+      heartbeatIntervalMs: 60_000,
+    });
+
+    await service.prompt("queued-session", "Wait for the current turn", "followUp");
+
+    expect(fake.calls.prompt).toEqual([{ text: "Wait for the current turn", options: { streamingBehavior: "followUp" } }]);
+    expect(hub.sessionEvents.some(({ event }) => event.type === "message.append")).toBe(false);
+    await service.dispose();
+  });
+
+  it("clears queued messages when aborting active work", async () => {
+    const fake = fakeRuntime("abort-session");
+    const service = new PiSessionService(new CapturingSessionEventHub(), {
+      createRuntime: () => Promise.resolve(asRuntimeFactoryResult(fake.runtime)),
+      createAgentRuntime: () => Promise.resolve(fake.runtime),
+      sessionManager: {
+        create: () => fakeSessionManager(),
+        list: () => Promise.resolve([]),
+        listAll: () => Promise.resolve([{ id: "abort-session", path: "/sessions/abort-session.jsonl", cwd: "/workspace", created: new Date("2026-01-01T00:00:00.000Z"), modified: new Date("2026-01-01T00:01:00.000Z"), messageCount: 0, firstMessage: "", allMessagesText: "" }]),
+        open: () => fakeSessionManager(),
+      },
+      heartbeatIntervalMs: 60_000,
+    });
+
+    await service.status("abort-session");
+    await service.abort("abort-session");
+
+    expect(fake.calls.clearQueue).toBe(1);
+    expect(fake.calls.abort).toBe(1);
+    await service.dispose();
+  });
+
+  it("clears queued messages when stopping a session runtime", async () => {
+    const fake = fakeRuntime("stop-session");
+    const service = new PiSessionService(new CapturingSessionEventHub(), {
+      createRuntime: () => Promise.resolve(asRuntimeFactoryResult(fake.runtime)),
+      createAgentRuntime: () => Promise.resolve(fake.runtime),
+      sessionManager: {
+        create: () => fakeSessionManager(),
+        list: () => Promise.resolve([]),
+        listAll: () => Promise.resolve([{ id: "stop-session", path: "/sessions/stop-session.jsonl", cwd: "/workspace", created: new Date("2026-01-01T00:00:00.000Z"), modified: new Date("2026-01-01T00:01:00.000Z"), messageCount: 0, firstMessage: "", allMessagesText: "" }]),
+        open: () => fakeSessionManager(),
+      },
+      heartbeatIntervalMs: 60_000,
+    });
+
+    await service.status("stop-session");
+    service.stop("stop-session");
+
+    expect(fake.calls.clearQueue).toBe(1);
     await service.dispose();
   });
 });

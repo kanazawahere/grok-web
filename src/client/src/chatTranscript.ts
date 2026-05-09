@@ -23,7 +23,19 @@ function applyFinalMessage(messages: ChatLine[], rawMessage: unknown): ChatLine[
   if (ended === undefined) return undefined;
   const last = messages.at(-1);
   if (last?.role !== ended.role) return [...messages, ended];
-  return [...messages.slice(0, -1), ended];
+  if (ended.role === "assistant" || sameMessageText(last, ended)) return [...messages.slice(0, -1), ended];
+  return [...messages, ended];
+}
+
+function sameMessageText(left: ChatLine, right: ChatLine): boolean {
+  return messageText(left) === messageText(right);
+}
+
+function messageText(message: ChatLine): string {
+  return message.parts
+    .filter((part): part is Extract<ChatLine["parts"][number], { type: "text" }> => part.type === "text")
+    .map((part) => part.text)
+    .join("\n\n");
 }
 
 function appendNormalized(messages: ChatLine[], rawMessage: unknown): ChatLine[] {

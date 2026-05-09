@@ -38,6 +38,11 @@ export interface SessionActivity {
   at: string;
 }
 
+export interface QueuedSessionMessage {
+  kind: "steer" | "followUp";
+  text: string;
+}
+
 export interface SessionStatus {
   sessionId: string;
   model?: { provider?: string; id?: string; name?: string; contextWindow?: number; reasoning?: unknown };
@@ -46,6 +51,7 @@ export interface SessionStatus {
   isCompacting: boolean;
   isBashRunning: boolean;
   pendingMessageCount: number;
+  queuedMessages: QueuedSessionMessage[];
   tokens: { input: number; output: number; cacheRead: number; cacheWrite: number; total: number };
   cost: number;
   contextUsage?: { tokens: number | null; contextWindow: number; percent: number | null };

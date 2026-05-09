@@ -145,6 +145,13 @@ export const chatStyles = css`
   .group-msg.system { color: #ff7b72; }
   .group-msg.bash { color: #3fb950; }
   .history-boundary { display: grid; gap: 3px; margin: 0 0 14px; color: #8b949e; font-size: 12px; text-align: center; }
+  .queued-messages { max-width: 100%; min-width: 0; box-sizing: border-box; display: grid; gap: 8px; margin: 0 0 14px; padding: 12px; border: 1px solid #6e5200; border-radius: 10px; background: #1f1a10; color: #e6edf3; overflow: auto; -webkit-overflow-scrolling: touch; }
+  .queued-header { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .queued-header strong { color: #d29922; }
+  .queued-header small { color: #8b949e; }
+  .queued-message { display: grid; gap: 4px; padding-top: 8px; border-top: 1px solid #30363d; }
+  .queued-message:first-of-type { padding-top: 0; border-top: 0; }
+  .queued-kind { color: #8b949e; font-size: 12px; text-transform: uppercase; }
   .session-activity { max-width: 100%; min-width: 0; box-sizing: border-box; display: grid; gap: 4px; margin: 0 0 14px; padding: 12px; border: 1px solid #30363d; border-radius: 10px; background: #161b22; color: #e6edf3; overflow: auto; -webkit-overflow-scrolling: touch; }
   .session-activity.compacting { border-color: #a371f7; background: #21132f; }
   .session-activity.receiving { border-color: #238636; background: #0f1b12; }

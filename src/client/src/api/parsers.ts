@@ -1,4 +1,4 @@
-import type { CommandOption, CommandResult, FileContentResponse, FileSuggestion, FileTreeEntry, FileTreeResponse, GitDiffResponse, GitFileState, GitStatusFile, GitStatusResponse, MessagePage, Project, SessionInfo, SessionStatus, SlashCommand, TerminalInfo, Workspace } from "../../../shared/apiTypes";
+import type { CommandOption, CommandResult, FileContentResponse, FileSuggestion, FileTreeEntry, FileTreeResponse, GitDiffResponse, GitFileState, GitStatusFile, GitStatusResponse, MessagePage, Project, QueuedSessionMessage, SessionInfo, SessionStatus, SlashCommand, TerminalInfo, Workspace } from "../../../shared/apiTypes";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -100,12 +100,20 @@ export function parseSessionStatus(value: unknown): SessionStatus {
     isCompacting: requireBoolean(record, "isCompacting"),
     isBashRunning: requireBoolean(record, "isBashRunning"),
     pendingMessageCount: requireNumber(record, "pendingMessageCount"),
+    queuedMessages: record["queuedMessages"] === undefined ? [] : arrayOf(parseQueuedSessionMessage)(record["queuedMessages"]),
     tokens: parseTokens(record["tokens"]),
     cost: requireNumber(record, "cost"),
     ...optionalModel(record["model"]),
     ...optionalContextUsage(record["contextUsage"]),
     ...optionalField("thinkingLevel", optionalString(record, "thinkingLevel")),
   };
+}
+
+function parseQueuedSessionMessage(value: unknown): QueuedSessionMessage {
+  const record = requireRecord(value);
+  const kind = requireString(record, "kind");
+  if (kind !== "steer" && kind !== "followUp") throw new Error("Invalid queued message kind");
+  return { kind, text: requireString(record, "text") };
 }
 
 function parseTokens(value: unknown): SessionStatus["tokens"] {

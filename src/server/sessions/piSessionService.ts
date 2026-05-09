@@ -170,9 +170,15 @@ export class PiSessionService {
     await this.assertWritable(sessionId);
     const session = await this.getOrOpen(sessionId);
     this.maybeGenerateSessionName(session, text);
-    const behavior = session.isStreaming || session.isCompacting ? streamingBehavior ?? "followUp" : undefined;
+    const isQueued = session.isStreaming || session.isCompacting;
+    const behavior = isQueued ? streamingBehavior ?? "followUp" : undefined;
+    if (isQueued && hasQueuedMessageText(session, text)) {
+      this.publishActivity(session, "duplicate queued message ignored", "active");
+      this.publishStatus(session);
+      return;
+    }
     this.publishActivity(session, session.isCompacting ? "message queued during compaction" : behavior === "steer" ? "steering queued" : behavior === "followUp" ? "message queued" : "prompt accepted", "active");
-    this.events.publish(sessionId, { type: "message.append", message: userTextMessage(text) });
+    if (!isQueued) this.events.publish(sessionId, { type: "message.append", message: userTextMessage(text) });
     void session.prompt(text, behavior === undefined ? undefined : { streamingBehavior: behavior }).catch((error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
       this.publishActivity(session, "error", "error", message);
@@ -246,6 +252,7 @@ export class PiSessionService {
   async abort(sessionId: string): Promise<void> {
     const active = this.active.get(sessionId);
     if (!active) return;
+    clearSessionQueue(active.runtime.session);
     await active.runtime.session.abort();
     this.publishActivity(active.runtime.session, "stopped", "idle");
     this.publishStatus(active.runtime.session);
@@ -254,6 +261,7 @@ export class PiSessionService {
   stop(sessionId: string): void {
     const active = this.active.get(sessionId);
     if (!active) return;
+    clearSessionQueue(active.runtime.session);
     active.unsubscribe();
     void active.runtime.session.abort().finally(() => active.runtime.dispose());
     this.active.delete(sessionId);
@@ -416,6 +424,7 @@ export class PiSessionService {
       isCompacting: session.isCompacting,
       isBashRunning: session.isBashRunning,
       pendingMessageCount: session.pendingMessageCount,
+      queuedMessages: queuedMessagesFromSession(session),
       tokens: stats.tokens,
       cost: stats.cost,
       ...(contextUsage === undefined ? {} : { contextUsage }),
@@ -433,6 +442,23 @@ async function clearParentSession(sessionFile: string): Promise<void> {
   if (header["parentSession"] === undefined) return;
   delete header["parentSession"];
   await writeFile(sessionFile, `${JSON.stringify(header)}${rest}`, "utf8");
+}
+
+function clearSessionQueue(session: AgentSession): void {
+  const candidate = session as AgentSession & { clearQueue?: () => unknown };
+  candidate.clearQueue?.();
+}
+
+function hasQueuedMessageText(session: AgentSession, text: string): boolean {
+  return queuedMessagesFromSession(session).some((message) => message.text === text);
+}
+
+function queuedMessagesFromSession(session: AgentSession): { kind: "steer" | "followUp"; text: string }[] {
+  const candidate = session as AgentSession & { getSteeringMessages?: () => string[]; getFollowUpMessages?: () => string[] };
+  return [
+    ...(candidate.getSteeringMessages?.() ?? []).map((text) => ({ kind: "steer" as const, text })),
+    ...(candidate.getFollowUpMessages?.() ?? []).map((text) => ({ kind: "followUp" as const, text })),
+  ];
 }
 
 function userTextMessage(text: string): { role: "user"; content: string } {

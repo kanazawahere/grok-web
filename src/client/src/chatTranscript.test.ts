@@ -41,4 +41,21 @@ describe("applyTranscriptEvent", () => {
       },
     ]);
   });
+
+  it("does not merge different finalized user messages", () => {
+    const messages = [textMessage("user", "first queued prompt")];
+
+    expect(applyTranscriptEvent(messages, { type: "message.end", message: { role: "user", content: "second queued prompt" } })).toEqual([
+      textMessage("user", "first queued prompt"),
+      textMessage("user", "second queued prompt"),
+    ]);
+  });
+
+  it("replaces an optimistic user message when the finalized text matches", () => {
+    const messages = [textMessage("user", "sent prompt")];
+
+    expect(applyTranscriptEvent(messages, { type: "message.end", message: { role: "user", content: "sent prompt", timestamp: "2026-05-09T12:00:00.000Z" } })).toEqual([
+      { ...textMessage("user", "sent prompt"), meta: { timestamp: "2026-05-09T12:00:00.000Z" } },
+    ]);
+  });
 });

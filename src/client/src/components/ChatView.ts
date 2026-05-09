@@ -70,6 +70,7 @@ export class ChatView extends LitElement {
           ${groupChatMessages(this.messages, this.messageStart).map((group) => group.kind === "message"
             ? this.renderMessage(group.message, group.index)
             : this.renderMessageGroup(group.messages, group.startIndex))}
+          ${this.renderQueuedMessages()}
           ${this.renderSessionActivity()}
         </div>
         ${this.renderActivityDock()}
@@ -86,6 +87,25 @@ export class ChatView extends LitElement {
         <span class="dot"></span>
         <span class="activity-text">${this.activityText(state)}</span>
       </div>
+    `;
+  }
+
+  private renderQueuedMessages() {
+    const queued = this.status?.queuedMessages ?? [];
+    if (queued.length === 0) return null;
+    return html`
+      <aside class="queued-messages" aria-live="polite">
+        <div class="queued-header">
+          <strong>Queued messages</strong>
+          <small>${queued.length} pending · Stop clears the queue</small>
+        </div>
+        ${queued.map((message, index) => html`
+          <div class="queued-message">
+            <span class="queued-kind">${message.kind === "steer" ? "Steer" : "Follow-up"} ${String(index + 1)}</span>
+            <formatted-text .text=${message.text}></formatted-text>
+          </div>
+        `)}
+      </aside>
     `;
   }
 

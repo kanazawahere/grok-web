@@ -51,6 +51,7 @@ describe("SessionEventHub", () => {
       isCompacting: false,
       isBashRunning: false,
       pendingMessageCount: 0,
+      queuedMessages: [],
       tokens: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
       cost: 0,
     };
