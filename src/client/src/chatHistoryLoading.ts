@@ -12,7 +12,7 @@ const DEFAULT_TOP_THRESHOLD = 64;
 const VIEWPORT_FILL_TOLERANCE = 1;
 
 export function shouldRequestEarlierMessages(state: ChatHistoryLoadState): boolean {
-  if (!state.hasMore || state.loadingMore || !state.canRequest) return false;
+  if (!state.hasMore || state.loadingMore || !state.canRequest || state.clientHeight <= 0) return false;
   return isNearTop(state) || doesNotFillViewport(state);
 }
 

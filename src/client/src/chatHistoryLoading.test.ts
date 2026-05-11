@@ -31,6 +31,10 @@ describe("chat history loading decisions", () => {
     expect(shouldRequestEarlierMessages({ ...base, canRequest: false, scrollTop: 0 })).toBe(false);
   });
 
+  it("does not request while the scroll container is hidden", () => {
+    expect(shouldRequestEarlierMessages({ ...base, scrollTop: 0, scrollHeight: 0, clientHeight: 0 })).toBe(false);
+  });
+
   it("uses a small tolerance for underfilled viewports", () => {
     expect(doesNotFillViewport({ scrollHeight: 501, clientHeight: 500 })).toBe(true);
     expect(doesNotFillViewport({ scrollHeight: 502, clientHeight: 500 })).toBe(false);

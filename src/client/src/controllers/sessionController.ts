@@ -68,7 +68,7 @@ export class SessionController {
       if (session.archived === true) {
         const page = await api.messages(session.id, { limit: MESSAGE_PAGE_SIZE });
         if (seq !== this.selectionSeq || this.getState().selectedSession?.id !== session.id) return;
-        const history = this.mergeAndCacheHistory(session.id, page);
+        const history = this.mergeAndCacheHistory(session.id, page, this.currentHistoryPage());
         this.setState({ messages: normalizeMessages(history.messages), messagePageStart: history.start, messagePageTotal: history.total, isLoadingEarlierMessages: false, isReceivingPartialStream: false, status: undefined, activity: undefined });
         if (options?.updateUrl !== false) this.updateUrl();
         return;
@@ -81,7 +81,7 @@ export class SessionController {
       );
       const [page, status] = await Promise.all([api.messages(session.id, { limit: MESSAGE_PAGE_SIZE }), api.status(session.id)]);
       if (seq !== this.selectionSeq || this.getState().selectedSession?.id !== session.id) return;
-      const history = this.mergeAndCacheHistory(session.id, page);
+      const history = this.mergeAndCacheHistory(session.id, page, this.currentHistoryPage());
       const isReceivingPartialStream = status.isStreaming;
       this.catchupStreamSessionId = isReceivingPartialStream ? session.id : undefined;
       this.setState({ messages: normalizeMessages(history.messages), messagePageStart: history.start, messagePageTotal: history.total, isLoadingEarlierMessages: false, isReceivingPartialStream, status, activity: this.getState().sessionActivities[session.id] });
@@ -100,9 +100,10 @@ export class SessionController {
     if (!session || state.isLoadingEarlierMessages || state.messagePageStart <= 0) return;
     this.setState({ isLoadingEarlierMessages: true });
     try {
+      const base = this.currentHistoryPage();
       const page = await api.messages(session.id, { before: state.messagePageStart, limit: MESSAGE_PAGE_SIZE });
       if (this.getState().selectedSession?.id !== session.id) return;
-      const history = this.mergeAndCacheHistory(session.id, page);
+      const history = this.mergeAndCacheHistory(session.id, page, base);
       this.setState({
         messages: normalizeMessages(history.messages),
         messagePageStart: history.start,
@@ -287,9 +288,10 @@ export class SessionController {
     if (sessionId === undefined || session?.id !== sessionId || session.archived === true) return;
     try {
       this.flushPendingTranscriptEvents();
+      const base = this.currentHistoryPage();
       const [page, status] = await Promise.all([api.messages(sessionId, { limit: MESSAGE_PAGE_SIZE }), api.status(sessionId)]);
       if (this.getState().selectedSession?.id !== sessionId) return;
-      const history = this.mergeAndCacheHistory(sessionId, page);
+      const history = this.mergeAndCacheHistory(sessionId, page, base);
       this.setState({
         messages: normalizeMessages(history.messages),
         messagePageStart: history.start,
@@ -312,10 +314,16 @@ export class SessionController {
     });
   }
 
-  private mergeAndCacheHistory(sessionId: string, page: RawMessagePage): RawMessagePage {
-    const history = mergeChatHistory(readChatHistoryCache(sessionId), page);
+  private mergeAndCacheHistory(sessionId: string, page: RawMessagePage, base = readChatHistoryCache(sessionId)): RawMessagePage {
+    const history = mergeChatHistory(base, page);
     writeChatHistoryCache(sessionId, history);
     return history;
+  }
+
+  private currentHistoryPage(): RawMessagePage | undefined {
+    const state = this.getState();
+    if (state.messages.length === 0 && state.messagePageTotal === 0) return undefined;
+    return { messages: state.messages, start: state.messagePageStart, total: state.messagePageTotal };
   }
 
   private applyCommandResult(result: CommandResult) {
@@ -425,9 +433,10 @@ export class SessionController {
 
   private async refreshMessages(sessionId: string) {
     try {
+      const base = this.currentHistoryPage();
       const page = await api.messages(sessionId, { limit: MESSAGE_PAGE_SIZE });
       if (this.getState().selectedSession?.id !== sessionId) return;
-      const history = this.mergeAndCacheHistory(sessionId, page);
+      const history = this.mergeAndCacheHistory(sessionId, page, base);
       this.setState({ messages: normalizeMessages(history.messages), messagePageStart: history.start, messagePageTotal: history.total });
     } catch (error) {
       if (this.getState().selectedSession?.id === sessionId) this.setState({ error: String(error) });
