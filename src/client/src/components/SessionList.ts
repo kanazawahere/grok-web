@@ -48,6 +48,12 @@ export class SessionList extends LitElement {
   protected override updated(changed: PropertyValues<this>): void {
     if (changed.has("sessions") && this.openMenuSessionId !== undefined && !this.sessions.some((session) => session.id === this.openMenuSessionId)) this.openMenuSessionId = undefined;
     if (changed.has("sessions") && !this.sessions.some((session) => session.archived === true)) this.archivedExpanded = false;
+    if (this.selected?.archived === true && !this.archivedExpanded) {
+      this.archivedExpanded = true;
+      void this.updateComplete.then(() => { this.scrollSelectedIntoView(); });
+      return;
+    }
+    if (changed.has("selected") || changed.has("sessions")) this.scrollSelectedIntoView();
   }
 
   override render() {
@@ -111,6 +117,10 @@ export class SessionList extends LitElement {
   private toggleArchived() {
     this.archivedExpanded = !this.archivedExpanded;
     if (!this.archivedExpanded) this.openMenuSessionId = undefined;
+  }
+
+  private scrollSelectedIntoView(): void {
+    this.renderRoot.querySelector<HTMLElement>(".action-row.selected")?.scrollIntoView({ block: "nearest" });
   }
 
   private renderStatus(session: SessionInfo) {

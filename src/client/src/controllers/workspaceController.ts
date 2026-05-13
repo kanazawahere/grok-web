@@ -43,8 +43,7 @@ export class WorkspaceController {
     try {
       const sessions = await api.sessions(workspace.path);
       this.setState({ sessions });
-      const sessionId = target?.sessionId;
-      const session = sessionId !== undefined && sessionId !== "" ? sessions.find((s) => s.id === sessionId || s.id.startsWith(sessionId)) : sessions.find((s) => s.archived !== true);
+      const session = this.sessions.preferredSession(workspace.path, sessions, target?.sessionId);
       if (session) await this.sessions.selectSession(session, { updateUrl: target?.updateUrl });
       else if (target?.updateUrl !== false) this.updateUrl();
     } catch (error) {

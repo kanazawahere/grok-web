@@ -6,7 +6,7 @@ import { readChatHistoryCache, mergeChatHistory, writeChatHistoryCache, type Raw
 import { applyTranscriptEvent } from "../chatTranscript";
 import { isShellInput } from "../inputModes";
 import { SessionSocket, type GlobalSessionEvent, type SessionUiEvent } from "../sessionSocket";
-import { markSessionArchived, selectionAfterArchivingSession } from "./sessionSelection";
+import { InMemorySessionSelectionMemory, markSessionArchived, selectPreferredSession, selectionAfterArchivingSession, type SessionSelectionMemory } from "./sessionSelection";
 import type { GetState, SetState, UpdateUrl } from "./types";
 
 export class SessionController {
@@ -16,7 +16,12 @@ export class SessionController {
   private pendingTranscriptEvents: SessionUiEvent[] = [];
   private pendingTranscriptFrame: number | undefined;
 
-  constructor(private readonly getState: GetState, private readonly setState: SetState, private readonly updateUrl: UpdateUrl) {}
+  constructor(
+    private readonly getState: GetState,
+    private readonly setState: SetState,
+    private readonly updateUrl: UpdateUrl,
+    private readonly sessionSelection: SessionSelectionMemory = new InMemorySessionSelectionMemory(),
+  ) {}
 
   applyGlobalEvent(event: GlobalSessionEvent): void {
     if (event.type === "status.update") this.applyStatus(event.status);
@@ -48,7 +53,12 @@ export class SessionController {
     }
   }
 
+  preferredSession(cwd: string, sessions: SessionInfo[], targetSessionId: string | undefined): SessionInfo | undefined {
+    return selectPreferredSession(sessions, { targetSessionId, latestSessionId: this.sessionSelection.latestSessionId(cwd) });
+  }
+
   async selectSession(session: SessionInfo, options?: { updateUrl?: boolean | undefined }) {
+    this.sessionSelection.rememberSession(session);
     const seq = ++this.selectionSeq;
     this.socket.close();
     this.catchupStreamSessionId = undefined;

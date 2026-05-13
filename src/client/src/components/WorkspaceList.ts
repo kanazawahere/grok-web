@@ -1,4 +1,4 @@
-import { LitElement, html } from "lit";
+import { LitElement, html, type PropertyValues } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import type { Workspace } from "../api";
 import type { WorkspaceLabelItem } from "../plugins/types";
@@ -12,6 +12,10 @@ export class WorkspaceList extends LitElement {
   @property({ attribute: false }) selected?: Workspace;
   @property({ attribute: false }) workspaceLabelItems: (workspace: Workspace) => WorkspaceLabelItem[] = () => [];
   @property({ attribute: false }) onSelect?: (workspace: Workspace) => void;
+
+  protected override updated(changed: PropertyValues<this>): void {
+    if (changed.has("selected") || changed.has("workspaces")) this.scrollSelectedIntoView();
+  }
 
   override render() {
     return html`
@@ -39,6 +43,10 @@ export class WorkspaceList extends LitElement {
         })}
       </section>
     `;
+  }
+
+  private scrollSelectedIntoView(): void {
+    this.renderRoot.querySelector<HTMLElement>(".action-row.selected")?.scrollIntoView({ block: "nearest" });
   }
 
   static override styles = listStyles;
