@@ -11,7 +11,8 @@ export class MachineController {
     try {
       const machines = await api.machines();
       const selectedMachine = await this.selectInitialMachine(machines, routeMachineId);
-      this.setState({ machines, selectedMachine });
+      const machineIds = new Set(machines.map((machine) => machine.id));
+      this.setState({ machines, selectedMachine, machineActivities: filterKeys(this.getState().machineActivities, machineIds) });
       void this.refreshMachineHealthFor(machines);
     } catch (error) {
       this.setState({ error: String(error) });
@@ -70,7 +71,7 @@ export class MachineController {
       await api.deleteMachine(machine.id);
       const machines = this.getState().machines.filter((candidate) => candidate.id !== machine.id);
       const local = machines.find((candidate) => candidate.id === "local") ?? machines[0];
-      this.setState({ machines, machineStatuses: omitKey(this.getState().machineStatuses, machine.id) });
+      this.setState({ machines, machineStatuses: omitKey(this.getState().machineStatuses, machine.id), machineActivities: omitKey(this.getState().machineActivities, machine.id) });
       if (wasSelected && local !== undefined) {
         if (options.selectFallback === false) return local;
         await this.selectMachine(local);
@@ -134,4 +135,8 @@ export class MachineController {
 
 function omitKey<T>(record: Record<string, T>, keyToOmit: string): Record<string, T> {
   return Object.fromEntries(Object.entries(record).filter(([key]) => key !== keyToOmit));
+}
+
+function filterKeys<T>(record: Record<string, T>, allowedKeys: Set<string>): Record<string, T> {
+  return Object.fromEntries(Object.entries(record).filter(([key]) => allowedKeys.has(key)));
 }

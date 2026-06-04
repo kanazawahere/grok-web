@@ -1,6 +1,6 @@
 import { LitElement, html } from "lit";
 import { customElement, query, state } from "lit/decorators.js";
-import { configApi, piWebApi, terminalsApi, type Machine, type PiWebConfigValues, type PiWebShortcutConfig, type Project, type RealtimeEvent, type SessionInfo, type TerminalCommandRun, type TerminalUiEvent, type ThinkingLevel, type Workspace } from "../api";
+import { configApi, piWebApi, terminalsApi, type Machine, type MachineHealth, type PiWebConfigValues, type PiWebShortcutConfig, type Project, type RealtimeEvent, type SessionInfo, type TerminalCommandRun, type TerminalUiEvent, type ThinkingLevel, type Workspace } from "../api";
 import type { AppAction } from "../actions";
 import { initialAppState, type AppState } from "../appState";
 import { isSessionActive } from "../../../shared/activity";
@@ -32,6 +32,7 @@ import { readSettingsSection, writeSettingsSection, type SettingsSection } from 
 import { applyShortcutPreferences } from "../shortcutPreferences";
 import { createTerminalCommandRunsRuntime } from "../runtime/terminalRuntime";
 import { isWorkspaceDeletionPending, isWorkspaceDeletionRunPending, latestWorkspaceDeletionRuns, pendingWorkspaceDeletionIds, targetWorkspaceIdForRun, workspaceDeletionMetadata, workspaceDeletionRunFilter } from "../workspaceDeletion";
+import { machineActivityIndicator } from "../workspaceActivity";
 import "./MachineList";
 import "./ProjectList";
 import "./WorkspaceList";
@@ -115,6 +116,7 @@ export class PiWebApp extends LitElement {
   );
   private readonly keyboard = new KeyboardShortcutDispatcher();
   private readonly realtime = new RealtimeSocket();
+  private readonly machineActivitySockets = new Map<string, RealtimeSocket>();
   private readonly activeTerminalIds = new Set<string>();
   private readonly machineNavigation = new InMemoryMachineNavigationMemory();
   private readonly terminalSelection = new InMemoryTerminalSelectionMemory();
@@ -153,7 +155,7 @@ export class PiWebApp extends LitElement {
     this.appShell.repairViewportPosition();
     void this.sessions.refreshSelectedSession();
     void this.refreshPiWebStatus();
-    void this.refreshWorkspaceActivity();
+    void this.refreshMachineActivities();
     void this.refreshWorkspaceDeletionRuns();
   };
   private readonly onVisibilityChange = () => {
@@ -161,7 +163,7 @@ export class PiWebApp extends LitElement {
       this.appShell.repairViewportPosition();
       void this.sessions.refreshSelectedSession();
       void this.refreshPiWebStatus();
-      void this.refreshWorkspaceActivity();
+      void this.refreshMachineActivities();
       void this.refreshWorkspaceDeletionRuns();
     }
   };
@@ -212,6 +214,7 @@ export class PiWebApp extends LitElement {
     this.auth.dispose();
     this.sessions.dispose();
     this.realtime.close();
+    this.closeMachineActivitySockets();
     this.git.dispose();
     if (this.piWebStatusTimer !== undefined) window.clearInterval(this.piWebStatusTimer);
     this.piWebStatusTimer = undefined;
@@ -227,6 +230,7 @@ export class PiWebApp extends LitElement {
     this.handleActivityTransition(previous, this.state);
     this.handleWorkspaceChange(previous, this.state);
     this.handleMachineChange(previous, this.state);
+    if (machineActivitySubscriptionInputsChanged(previous, this.state)) this.syncMachineActivitySubscriptions();
   }
 
   private async loadProjectsAndRestoreRoute() {
@@ -251,12 +255,21 @@ export class PiWebApp extends LitElement {
     }
   }
 
-  private async refreshWorkspaceActivity(): Promise<void> {
+  private async refreshWorkspaceActivity(machineId = selectedMachineId(this.state)): Promise<void> {
     try {
-      await this.activity.refresh();
+      await this.activity.refresh(machineId);
     } catch (error) {
-      console.warn("Failed to refresh workspace activity", error);
+      console.warn(`Failed to refresh workspace activity for ${machineId}`, error);
     }
+  }
+
+  private async refreshMachineActivities(): Promise<void> {
+    const machineIds = this.state.machines.length === 0
+      ? [selectedMachineId(this.state)]
+      : this.state.machines
+        .filter((machine) => shouldRefreshMachineActivity(machine, this.state.machineStatuses[machine.id]))
+        .map((machine) => machine.id);
+    await Promise.all(machineIds.map((machineId) => this.refreshWorkspaceActivity(machineId)));
   }
 
   private async loadClientConfig(): Promise<void> {
@@ -278,7 +291,7 @@ export class PiWebApp extends LitElement {
       await Promise.all([
         this.sessions.refreshSelectedSession(),
         this.refreshPiWebStatus(),
-        this.refreshWorkspaceActivity(),
+        this.refreshMachineActivities(),
         this.loadClientConfig(),
         this.refreshWorkspaceDeletionRuns(),
         this.refreshCurrentWorkspaceSurface(),
@@ -602,6 +615,42 @@ export class PiWebApp extends LitElement {
     );
   }
 
+  private syncMachineActivitySubscriptions(): void {
+    const desiredMachineIds = this.machineActivitySubscriptionIds();
+    for (const [machineId, socket] of this.machineActivitySockets.entries()) {
+      if (desiredMachineIds.has(machineId)) continue;
+      socket.close();
+      this.machineActivitySockets.delete(machineId);
+    }
+    for (const machineId of desiredMachineIds) {
+      if (this.machineActivitySockets.has(machineId)) continue;
+      const socket = new RealtimeSocket();
+      socket.connect(
+        (event) => { this.handleMachineActivityEvent(machineId, event); },
+        () => { void this.refreshWorkspaceActivity(machineId); },
+        machineId,
+      );
+      this.machineActivitySockets.set(machineId, socket);
+    }
+  }
+
+  private closeMachineActivitySockets(): void {
+    for (const socket of this.machineActivitySockets.values()) socket.close();
+    this.machineActivitySockets.clear();
+  }
+
+  private machineActivitySubscriptionIds(): Set<string> {
+    const selected = selectedMachineId(this.state);
+    return new Set(this.state.machines
+      .filter((machine) => machine.id !== selected)
+      .filter((machine) => shouldSubscribeToMachineActivity(machine, this.state.machineStatuses[machine.id]))
+      .map((machine) => machine.id));
+  }
+
+  private handleMachineActivityEvent(machineId: string, event: RealtimeEvent): void {
+    if (event.type === "workspace.activity") this.activity.applyWorkspaceActivity(event.activity, machineId);
+  }
+
   private handleRealtimeEvent(event: RealtimeEvent): void {
     if (event.type === "workspace.activity") this.activity.applyWorkspaceActivity(event.activity);
     else if (isTerminalEvent(event)) {
@@ -718,6 +767,7 @@ export class PiWebApp extends LitElement {
         .machines=${this.state.machines}
         .selectedMachine=${this.state.selectedMachine}
         .machineStatuses=${this.state.machineStatuses}
+        .machineActivities=${this.state.machineActivities}
         .machinesCollapsed=${this.mobileNavigation.isCollapsed("machines")}
         .onToggleMachines=${() => { this.mobileNavigation.toggle("machines"); }}
         .onSelectMachine=${(machine: Machine) => this.withChatScrollTransition(async () => {
@@ -1208,6 +1258,7 @@ export class PiWebApp extends LitElement {
     return html`
       <app-context-bar
         .machine=${this.state.selectedMachine}
+        .machineActivityKind=${selectedMachineActivityIndicator(this.state)}
         .project=${this.state.selectedProject}
         .workspace=${this.state.selectedWorkspace}
         .session=${this.state.selectedSession}
@@ -1289,6 +1340,29 @@ function createPluginRegistry(): PluginRegistry {
   return registry;
 }
 
+function machineActivitySubscriptionInputsChanged(previous: AppState, next: AppState): boolean {
+  return previous.machines !== next.machines
+    || previous.machineStatuses !== next.machineStatuses
+    || (previous.selectedMachine?.id ?? "local") !== (next.selectedMachine?.id ?? "local");
+}
+
+function shouldSubscribeToMachineActivity(machine: Machine, health: MachineHealth | undefined): boolean {
+  return shouldRefreshMachineActivity(machine, health);
+}
+
+function shouldRefreshMachineActivity(machine: Machine, health: MachineHealth | undefined): boolean {
+  if (machine.kind === "local") return true;
+  const status = health?.status ?? machine.status;
+  return status === undefined || status === "unknown" || status === "online";
+}
+
+function selectedMachineActivityIndicator(state: AppState) {
+  const machineId = selectedMachineId(state);
+  const machine = state.selectedMachine;
+  const status = state.machineStatuses[machineId]?.status ?? machine?.status;
+  if (status === "offline" || status === "error") return undefined;
+  return machineActivityIndicator(state.machineActivities[machineId]);
+}
 
 function patchChangesState(state: AppState, patch: Partial<AppState>): boolean {
   return Object.entries(patch).some(([key, value]) => Reflect.get(state, key) !== value);

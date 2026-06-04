@@ -26,6 +26,7 @@ export interface AppState {
   sessionStatuses: Record<string, SessionStatus>;
   sessionActivities: Record<string, SessionActivity>;
   workspaceActivities: Record<string, WorkspaceActivity>;
+  machineActivities: Record<string, Record<string, WorkspaceActivity>>;
   workspacesByProjectId: Record<string, Workspace[]>;
   workspaceDeletionRuns: Record<string, TerminalCommandRun>;
   commandDialog: Extract<CommandResult, { type: "select" }> | undefined;
@@ -119,6 +120,7 @@ export function initialAppState(): AppState {
     sessionStatuses: {},
     sessionActivities: {},
     workspaceActivities: {},
+    machineActivities: {},
     workspacesByProjectId: {},
     workspaceDeletionRuns: {},
     commandDialog: undefined,

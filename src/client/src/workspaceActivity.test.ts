@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Project, Workspace, WorkspaceActivity } from "./api";
-import { projectActivityIndicator, workspaceActivityFor, workspaceActivityIndicator } from "./workspaceActivity";
+import { machineActivityIndicator, projectActivityIndicator, workspaceActivityFor, workspaceActivityIndicator } from "./workspaceActivity";
 
 function project(id = "p1", path = "/repo"): Project {
   return { id, name: id, path, createdAt: "now" };
@@ -42,5 +42,14 @@ describe("workspace activity aggregation", () => {
   it("falls back to project path matching before workspaces have been loaded", () => {
     expect(projectActivityIndicator(project("p1", "/repo"), [], { "/repo/packages/app": activity("/repo/packages/app") })).toBe("session");
     expect(projectActivityIndicator(project("p1", "/repo"), [], { "/other": activity("/other") })).toBeUndefined();
+  });
+
+  it("aggregates machine activity across workspaces", () => {
+    expect(machineActivityIndicator({ "/repo": activity("/repo", { hasSessionActivity: false, hasTerminalActivity: true }) })).toBe("terminal");
+    expect(machineActivityIndicator({
+      "/repo": activity("/repo", { hasSessionActivity: false, hasTerminalActivity: true }),
+      "/other": activity("/other"),
+    })).toBe("session");
+    expect(machineActivityIndicator({})).toBeUndefined();
   });
 });

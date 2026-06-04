@@ -12,9 +12,16 @@ export function workspaceActivityIndicator(activity: WorkspaceActivity | undefin
 }
 
 export function projectActivityIndicator(project: Project, knownWorkspaces: Workspace[], activities: Record<string, WorkspaceActivity>): ActivityIndicatorKind | undefined {
-  const matched = matchedProjectActivities(project, knownWorkspaces, activities);
-  if (matched.some((activity) => activity.hasSessionActivity)) return "session";
-  if (matched.some((activity) => activity.hasTerminalActivity)) return "terminal";
+  return workspaceActivitiesIndicator(matchedProjectActivities(project, knownWorkspaces, activities));
+}
+
+export function machineActivityIndicator(activities: Record<string, WorkspaceActivity> | undefined): ActivityIndicatorKind | undefined {
+  return workspaceActivitiesIndicator(Object.values(activities ?? {}));
+}
+
+function workspaceActivitiesIndicator(activities: WorkspaceActivity[]): ActivityIndicatorKind | undefined {
+  if (activities.some((activity) => activity.hasSessionActivity)) return "session";
+  if (activities.some((activity) => activity.hasTerminalActivity)) return "terminal";
   return undefined;
 }
 

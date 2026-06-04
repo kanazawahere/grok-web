@@ -13,13 +13,27 @@ export class ActivityController {
     this.api = deps.api ?? defaultApi;
   }
 
-  async refresh(): Promise<void> {
-    const snapshot = await this.api.workspaceActivity(selectedMachineId(this.getState()));
-    this.setState({ workspaceActivities: indexWorkspaceActivities(snapshot) });
+  async refresh(machineId = selectedMachineId(this.getState())): Promise<void> {
+    this.applyMachineActivitySnapshot(machineId, indexWorkspaceActivities(await this.api.workspaceActivity(machineId)));
   }
 
-  applyWorkspaceActivity(activity: WorkspaceActivity): void {
-    this.setState({ workspaceActivities: applyWorkspaceActivityToMap(this.getState().workspaceActivities, activity) });
+  applyWorkspaceActivity(activity: WorkspaceActivity, machineId = selectedMachineId(this.getState())): void {
+    const state = this.getState();
+    const isSelectedMachine = selectedMachineId(state) === machineId;
+    const currentMachineActivities = state.machineActivities[machineId] ?? (isSelectedMachine ? state.workspaceActivities : {});
+    const nextMachineActivities = applyWorkspaceActivityToMap(currentMachineActivities, activity);
+    this.setState({
+      machineActivities: { ...state.machineActivities, [machineId]: nextMachineActivities },
+      ...(isSelectedMachine ? { workspaceActivities: nextMachineActivities } : {}),
+    });
+  }
+
+  private applyMachineActivitySnapshot(machineId: string, activities: Record<string, WorkspaceActivity>): void {
+    const state = this.getState();
+    this.setState({
+      machineActivities: { ...state.machineActivities, [machineId]: activities },
+      ...(selectedMachineId(state) === machineId ? { workspaceActivities: activities } : {}),
+    });
   }
 }
 

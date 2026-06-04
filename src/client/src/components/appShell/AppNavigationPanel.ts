@@ -12,6 +12,7 @@ export class AppNavigationPanel extends LitElement {
   @property({ attribute: false }) machines: Machine[] = [];
   @property({ attribute: false }) selectedMachine?: Machine;
   @property({ attribute: false }) machineStatuses: Record<string, MachineHealth> = {};
+  @property({ attribute: false }) machineActivities: Record<string, Record<string, WorkspaceActivity>> = {};
   @property({ attribute: false }) projects: Project[] = [];
   @property({ attribute: false }) selectedProject?: Project;
   @property({ attribute: false }) workspaces: Workspace[] = [];
@@ -65,6 +66,7 @@ export class AppNavigationPanel extends LitElement {
           .machines=${this.machines}
           .selected=${this.selectedMachine}
           .statuses=${this.machineStatuses}
+          .activities=${this.machineActivities}
           .collapsible=${this.collapsible}
           .collapsed=${this.machinesCollapsed}
           .onToggleCollapsed=${() => { this.onToggleMachines?.(); }}
