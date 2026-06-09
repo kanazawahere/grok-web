@@ -14,7 +14,7 @@ function sessionLabel(session: SessionInfo): string {
   return session.firstMessage !== "" ? session.firstMessage : session.id.slice(0, 8);
 }
 
-interface SessionRow {
+export interface SessionRow {
   session: SessionInfo;
   depth: number;
   hasMissingParent: boolean;
@@ -92,15 +92,17 @@ export class SessionList extends LitElement implements KeyboardNavigableSection 
   }
 
   override render() {
-    const currentRows = sessionRowsForCurrentSessions(this.sessions);
-    const archivedRows = sessionRows(this.sessions.filter((session) => session.archived === true));
+    const currentRows = sessionRowsForCurrentTree(this.sessions);
+    const currentRowIds = new Set(currentRows.map((row) => row.session.id));
+    const currentSelectableSessions = currentRows.map((row) => row.session).filter((session) => sessionSelectionScope(session) === "current");
+    const archivedRows = sessionRows(this.sessions.filter((session) => session.archived === true && !currentRowIds.has(session.id)));
     const descendantCounts = unarchivedDescendantCounts(this.sessions);
     return html`
       <section>
-        ${this.renderHeading(currentRows.length + archivedRows.length, currentRows.map((row) => row.session))}
+        ${this.renderHeading(currentRows.length + archivedRows.length, currentSelectableSessions)}
         ${this.collapsed ? null : html`
           <div class="list-body">
-            ${this.renderCurrentSelectionToolbar(currentRows.map((row) => row.session))}
+            ${this.renderCurrentSelectionToolbar(currentSelectableSessions)}
             ${currentRows.map((row) => this.renderSession(row, descendantCounts.get(row.session.id) ?? 0, "current"))}
             ${archivedRows.length > 0 ? html`
               ${this.renderArchivedHeading(archivedRows.map((row) => row.session))}
@@ -193,18 +195,20 @@ export class SessionList extends LitElement implements KeyboardNavigableSection 
   private renderSession(row: SessionRow, descendantCount: number, scope: SessionSelectionScope) {
     const { session } = row;
     const cappedDepth = Math.min(row.depth, 2);
-    const showsCheckbox = this.selectionScopes.has(scope);
+    const canBulkSelect = sessionSelectionScope(session) === scope;
+    const selectionActive = this.selectionScopes.has(scope);
+    const showsCheckbox = selectionActive && canBulkSelect;
     const bulkSelected = showsCheckbox && this.selectedSessionIds.has(session.id);
     return html`
       <div
-        class="action-row ${this.selected?.id === session.id ? "selected" : ""} ${bulkSelected ? "bulk-selected" : ""} ${session.archived === true ? "archived" : ""} ${showsCheckbox ? "selecting" : ""}"
+        class="action-row ${this.selected?.id === session.id ? "selected" : ""} ${bulkSelected ? "bulk-selected" : ""} ${session.archived === true ? "archived" : ""} ${selectionActive ? "selecting" : ""}"
         style=${`--depth:${String(cappedDepth)}`}
         tabindex="0"
         title=${session.path}
         @click=${(event: MouseEvent) => { activateSelectableRow(event, () => { this.activateSessionRow(session, scope); }); }}
         @keydown=${(event: KeyboardEvent) => { this.handleSessionKeydown(event, session, scope); }}
       >
-        <div class="action-main ${showsCheckbox ? "selecting" : ""}">
+        <div class="action-main ${selectionActive ? "selecting" : ""}">
           ${showsCheckbox ? html`<input class="session-checkbox" type="checkbox" aria-label=${`Select ${sessionLabel(session)}`} .checked=${bulkSelected} @click=${(event: MouseEvent) => { event.stopPropagation(); }} @change=${() => { this.toggleSelected(session.id); }}>` : null}
           <span class="action-name">${row.depth > 0 ? html`<span class="tree-marker">↳</span>` : null}${sessionLabel(session)}${row.depth > 2 ? html` <span class="badge">depth ${row.depth}</span>` : null}${row.hasMissingParent ? html` <span class="badge">parent unavailable</span>` : null}</span><small>${this.renderSessionMetaPrefix(session)}${String(session.messageCount)} messages</small>
           ${this.renderActivity(session)}
@@ -242,7 +246,7 @@ export class SessionList extends LitElement implements KeyboardNavigableSection 
   }
 
   private activateSessionRow(session: SessionInfo, scope: SessionSelectionScope): void {
-    if (this.selectionScopes.has(scope)) {
+    if (this.selectionScopes.has(scope) && sessionSelectionScope(session) === scope) {
       this.toggleSelected(session.id);
       return;
     }
@@ -411,8 +415,23 @@ function unarchivedDescendantCounts(sessions: SessionInfo[]): Map<string, number
   return new Map(sessions.map((session) => [session.id, countFor(session, new Set())]));
 }
 
-function sessionRowsForCurrentSessions(sessions: SessionInfo[]): SessionRow[] {
-  return sessionRows(sessions.filter((session) => session.archived !== true));
+export function sessionRowsForCurrentTree(sessions: SessionInfo[]): SessionRow[] {
+  const byPath = new Map(sessions.map((session) => [session.path, session]));
+  const visible = new Set<string>();
+  for (const session of sessions) {
+    if (session.archived === true) continue;
+    visible.add(session.id);
+    let parentPath = session.parentSessionPath;
+    const seenPaths = new Set<string>([session.path]);
+    while (parentPath !== undefined && !seenPaths.has(parentPath)) {
+      seenPaths.add(parentPath);
+      const parent = byPath.get(parentPath);
+      if (parent === undefined) break;
+      visible.add(parent.id);
+      parentPath = parent.parentSessionPath;
+    }
+  }
+  return sessionRows(sessions.filter((session) => visible.has(session.id)));
 }
 
 function sessionRows(sessions: SessionInfo[]): SessionRow[] {
