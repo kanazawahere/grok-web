@@ -308,6 +308,36 @@ describe("SessionController", () => {
     expect(state.sendingPrompts).toEqual({});
   });
 
+  it("sends slash commands without inserting an optimistic transcript line and toggles the sending state", async () => {
+    let state: AppState = { ...initialAppState(), selectedWorkspace: workspace, selectedSession: oldSession, sessions: [oldSession] };
+    let resolveCommand: (() => void) | undefined;
+    const seenDuringCommand: Record<string, true>[] = [];
+    const api: typeof defaultApi = {
+      ...defaultApi,
+      runCommand: (_session, text) => new Promise((resolve) => {
+        seenDuringCommand.push({ ...state.sendingPrompts });
+        resolveCommand = () => { resolve(text.startsWith("/skill") ? { type: "done" } : { type: "done", message: "stats" }); };
+      }),
+    };
+    const controller = new SessionController(
+      () => state,
+      (patch) => { state = { ...state, ...patch }; },
+      () => undefined,
+      undefined,
+      { api, socket: new FakeSocket() },
+    );
+
+    const run = controller.send("/skill:skill-creator");
+    expect(seenDuringCommand).toEqual([{ [oldSession.id]: true }]);
+    // No raw command text is added to the transcript; the agent streams the
+    // canonical expanded message back instead.
+    expect(state.messages).toEqual([]);
+    resolveCommand?.();
+    await run;
+    expect(state.messages).toEqual([]);
+    expect(state.sendingPrompts).toEqual({});
+  });
+
   it("keeps live message count updates when a cached new session becomes persisted", async () => {
     const cachedSession = markCachedNewSessionInfo(oldSession);
     let resolvePrompt: (() => void) | undefined;

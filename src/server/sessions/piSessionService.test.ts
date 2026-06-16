@@ -542,6 +542,32 @@ describe("PiSessionService", () => {
     await service.dispose();
   });
 
+  it("echoes the user message for direct prompts but not command-forwarded ones", async () => {
+    const fake = fakeRuntime("echo-session", {
+      resourceLoader: { getSkills: () => ({ skills: [{ name: "skill-creator" }] }) },
+    });
+    const hub = new CapturingSessionEventHub();
+    const service = new PiSessionService(hub, {
+      createAgentRuntime: runtimeCreator(fake.runtime),
+      sessionManager: sessionGateway([sessionRecord("echo-session")]),
+      heartbeatIntervalMs: 60_000,
+    });
+
+    await service.prompt(sessionRef("echo-session"), "Build the thing");
+    expect(hub.sessionEvents.filter(({ event }) => event.type === "message.append")).toHaveLength(1);
+
+    // The client optimistically renders command-forwarded prompts (e.g. /skill:*),
+    // so the server must not publish a second copy via message.append.
+    await service.runCommand(sessionRef("echo-session"), "/skill:skill-creator");
+    expect(hub.sessionEvents.filter(({ event }) => event.type === "message.append")).toHaveLength(1);
+    expect(fake.calls.prompt).toEqual([
+      { text: "Build the thing", options: undefined },
+      { text: "/skill:skill-creator", options: undefined },
+    ]);
+
+    await service.dispose();
+  });
+
   it("rejects malformed prompt text before opening the runtime", async () => {
     const fake = fakeRuntime("prompt-session");
     const service = new PiSessionService(new CapturingSessionEventHub(), {

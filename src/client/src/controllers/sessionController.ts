@@ -235,12 +235,21 @@ export class SessionController {
   async runCommand(text: string) {
     const session = this.getState().selectedSession;
     if (!session || session.archived === true) return;
-    this.setState({ messages: [...this.getState().messages, textMessage("user", text)] });
+    // Commands are not inserted into the transcript optimistically: a builtin
+    // command produces its own result line, and a runtime/skill command is
+    // forwarded to the agent, which streams back the canonical (expanded)
+    // message. Inserting the raw text here would leave a line that doesn't
+    // converge with server history and disappears on reload. Surface the same
+    // per-session sending indicator that send() uses for the pre-receipt window.
+    const sessionId = session.id;
+    this.markSendingPrompt(sessionId, true);
     try {
       this.applyCommandResult(await this.api.runCommand(session, text, selectedMachineId(this.getState())));
       this.markCachedNewSessionPersisted(session);
     } catch (error) {
       this.setState({ messages: [...this.getState().messages, textMessage("system", String(error))], error: String(error) });
+    } finally {
+      this.markSendingPrompt(sessionId, false);
     }
   }
 
