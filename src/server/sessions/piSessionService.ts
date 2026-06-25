@@ -314,7 +314,7 @@ export class PiSessionService {
   private readonly subsessionChildren = new Map<string, Set<string>>();
   /** Tracked subsession id -> persisted recovery details for the child. */
   private readonly subsessionLinks = new Map<string, TrackedSubsessionLink>();
-  /** Parent session ids whose persisted links have already been loaded. */
+  /** Parent id/file identities whose persisted links have already been loaded. */
   private readonly subsessionHydratedParents = new Set<string>();
   /**
    * Tracked subsession id -> whether a completion notification is armed.
@@ -348,9 +348,9 @@ export class PiSessionService {
       this.spawnTargets === undefined ? undefined : (input) => this.spawnSession(input),
       !subsessionsActive ? undefined : {
         spawn: (input) => this.spawnSubsession(input),
-        list: (parentSessionId) => this.listSubsessions(parentSessionId),
-        check: (parentSessionId, sessionId) => this.checkSubsession(parentSessionId, sessionId),
-        read: (parentSessionId, sessionId, query) => this.readSubsession(parentSessionId, sessionId, query),
+        list: (parentSessionId, parentSessionFile) => this.listSubsessions(parentSessionId, parentSessionFile),
+        check: (parentSessionId, sessionId, parentSessionFile) => this.checkSubsession(parentSessionId, sessionId, parentSessionFile),
+        read: (parentSessionId, sessionId, query, parentSessionFile) => this.readSubsession(parentSessionId, sessionId, query, parentSessionFile),
       },
     );
     this.createAgentRuntime = deps.createAgentRuntime ?? defaultCreateAgentRuntime;
@@ -487,16 +487,18 @@ export class PiSessionService {
   }
 
   /** Summaries of the tracked subsessions spawned by `parentSessionId`. */
-  async listSubsessions(parentSessionId: string): Promise<SubsessionSummary[]> {
-    await this.hydrateSubsessionsForParent(parentSessionId);
+  async listSubsessions(parentSessionId: string, parentSessionFile?: string): Promise<SubsessionSummary[]> {
+    const parentFile = nonEmptyString(parentSessionFile);
+    await this.hydrateSubsessionsForParent(parentSessionId, parentFile);
     const childIds = this.subsessionChildren.get(parentSessionId);
     if (childIds === undefined) return [];
-    return Promise.all([...childIds].map(async (childId) => ({ sessionId: childId, ...(await this.subsessionSummaryFields(childId)) })));
+    const authorizedChildIds = [...childIds].filter((childId) => this.subsessionLinkBelongsToParent(parentSessionId, parentFile, childId));
+    return Promise.all(authorizedChildIds.map(async (childId) => ({ sessionId: childId, ...(await this.subsessionSummaryFields(childId)) })));
   }
 
   /** Status and final result of a subsession, scoped to the caller's children. */
-  async checkSubsession(parentSessionId: string, sessionId: string): Promise<SubsessionCheckResult> {
-    const session = await this.openSubsession(parentSessionId, sessionId);
+  async checkSubsession(parentSessionId: string, sessionId: string, parentSessionFile?: string): Promise<SubsessionCheckResult> {
+    const session = await this.openSubsession(parentSessionId, sessionId, parentSessionFile);
     const messages = historyMessages(session);
     return {
       sessionId,
@@ -508,8 +510,8 @@ export class PiSessionService {
   }
 
   /** Filtered, paginated transcript of a subsession, scoped to the caller's children. */
-  async readSubsession(parentSessionId: string, sessionId: string, query: SubsessionReadQuery): Promise<SubsessionReadResult> {
-    const session = await this.openSubsession(parentSessionId, sessionId);
+  async readSubsession(parentSessionId: string, sessionId: string, query: SubsessionReadQuery, parentSessionFile?: string): Promise<SubsessionReadResult> {
+    const session = await this.openSubsession(parentSessionId, sessionId, parentSessionFile);
     const view = buildTranscriptView(historyMessages(session), query);
     return {
       sessionId,
@@ -520,12 +522,39 @@ export class PiSessionService {
   }
 
   /** Open a session after verifying it is one of the caller's tracked children. */
-  private async openSubsession(parentSessionId: string, sessionId: string): Promise<PiAgentSession> {
-    await this.hydrateSubsessionsForParent(parentSessionId);
-    if (this.subsessionParents.get(sessionId) !== parentSessionId) {
+  private async openSubsession(parentSessionId: string, sessionId: string, parentSessionFile?: string): Promise<PiAgentSession> {
+    const parentFile = nonEmptyString(parentSessionFile);
+    await this.hydrateSubsessionsForParent(parentSessionId, parentFile);
+    if (this.subsessionParents.get(sessionId) !== parentSessionId || !this.subsessionLinkBelongsToParent(parentSessionId, parentFile, sessionId)) {
       throw new Error(`Session ${sessionId} is not one of your subsessions`);
     }
     return this.getOrOpenTrackedSubsession(sessionId);
+  }
+
+  private subsessionLinkBelongsToParent(parentSessionId: string, parentSessionFile: string | undefined, childSessionId: string): boolean {
+    const link = this.subsessionLinks.get(childSessionId);
+    if (link?.parentSessionId !== parentSessionId) return false;
+    return parentSessionFile === undefined || trackedLinkParentFileMatches(link, parentSessionFile);
+  }
+
+  private activeChildForSubsessionLink(link: TrackedSubsessionLink): ActiveSession<PiSessionRuntime> | undefined {
+    const active = this.active.get(link.childSessionId);
+    if (active === undefined) return undefined;
+    return activeSessionFileMatches(active, link.childSessionFile) ? active : undefined;
+  }
+
+  private activeParentForSubsessionLink(link: TrackedSubsessionLink): ActiveSession<PiSessionRuntime> | undefined {
+    const active = this.active.get(link.parentSessionId);
+    if (active === undefined) return undefined;
+    return activeSessionFileMatches(active, link.parentSessionFile) ? active : undefined;
+  }
+
+  private subsessionLinkForActiveChild(session: PiAgentSession): TrackedSubsessionLink | undefined {
+    const childId = session.sessionId;
+    const parentId = this.subsessionParents.get(childId);
+    const link = this.subsessionLinks.get(childId);
+    if (parentId === undefined || link?.parentSessionId !== parentId) return undefined;
+    return sessionFileMatches(session, link.childSessionFile) ? link : undefined;
   }
 
   private registerVerifiedSubsession(link: TrackedSubsessionLink): void {
@@ -558,7 +587,7 @@ export class PiSessionService {
   }
 
   private persistSubsessionLink(link: TrackedSubsessionLink): void {
-    const parent = this.active.get(link.parentSessionId)?.runtime.session;
+    const parent = this.activeParentForSubsessionLink(link)?.runtime.session;
     if (parent === undefined) return;
     if (parent.sessionManager.appendCustomEntry === undefined) return;
     try {
@@ -585,20 +614,39 @@ export class PiSessionService {
     }
   }
 
-  private async hydrateSubsessionsForParent(parentSessionId: string): Promise<void> {
-    if (this.subsessionHydratedParents.has(parentSessionId)) return;
-    const parent = this.active.get(parentSessionId)?.runtime.session;
-    if (parent === undefined) return;
+  private async hydrateSubsessionsForParent(parentSessionId: string, parentSessionFile?: string): Promise<void> {
+    const hydrationKey = subsessionHydratedParentKey(parentSessionId, parentSessionFile);
+    if (this.subsessionHydratedParents.has(hydrationKey)) return;
 
-    const parentSessionFile = nonEmptyString(parent.sessionFile);
-    await this.registerPersistedSubsessionLinks(parentSessionId, parent, parentSessionFile);
-    this.subsessionHydratedParents.add(parentSessionId);
+    const activeParent = this.active.get(parentSessionId);
+    if (activeParent !== undefined && (parentSessionFile === undefined || activeSessionFileMatches(activeParent, parentSessionFile))) {
+      const activeParentFile = nonEmptyString(activeParent.runtime.session.sessionFile);
+      await this.registerPersistedSubsessionLinks(parentSessionId, activeParent.runtime.session.sessionManager, activeParentFile);
+      this.subsessionHydratedParents.add(hydrationKey);
+      return;
+    }
+
+    if (parentSessionFile === undefined) return;
+    if ((await readSessionHeaderSummary(parentSessionFile))?.id !== parentSessionId) {
+      this.subsessionHydratedParents.add(hydrationKey);
+      return;
+    }
+
+    let parentManager: PiSessionManager;
+    try {
+      parentManager = this.sessionManager.open(parentSessionFile);
+    } catch {
+      this.subsessionHydratedParents.add(hydrationKey);
+      return;
+    }
+    await this.registerPersistedSubsessionLinks(parentSessionId, parentManager, parentSessionFile);
+    this.subsessionHydratedParents.add(hydrationKey);
   }
 
-  private async registerPersistedSubsessionLinks(parentSessionId: string, parent: PiAgentSession, parentSessionFile: string | undefined): Promise<void> {
+  private async registerPersistedSubsessionLinks(parentSessionId: string, parentManager: PiSessionManager, parentSessionFile: string | undefined): Promise<void> {
     // Parent custom links are the authoritative recovery record: verify the
     // exact live child file/header or an exact archived child before tracking.
-    const entries = parent.sessionManager.getEntries?.() ?? parent.sessionManager.getBranch();
+    const entries = parentManager.getEntries?.() ?? parentManager.getBranch();
     for (const entry of entries) {
       const link = parsePersistedParentSubsessionLink(entry);
       if (link === undefined) continue;
@@ -684,34 +732,32 @@ export class PiSessionService {
   }
 
   private async getOrOpenTrackedSubsession(sessionId: string): Promise<PiAgentSession> {
-    const active = this.active.get(sessionId);
+    const link = this.subsessionLinks.get(sessionId);
+    if (link === undefined) throw new Error("Session not found");
+
+    const active = this.activeChildForSubsessionLink(link);
     if (active !== undefined) return active.runtime.session;
 
     const archived = await this.getArchivedExact(sessionId);
     if (archived?.archivePath !== undefined) return (await this.create(this.sessionManager.open(archived.archivePath), archived.cwd)).runtime.session;
 
-    const link = this.subsessionLinks.get(sessionId);
-    if (link?.childSessionFile !== undefined) {
+    if (link.childSessionFile !== undefined) {
       if (!(await sessionFileHeaderMatches(link.childSessionFile, { sessionId, parentSessionFile: link.parentSessionFile }))) throw new Error("Session not found");
       const sessionManager = this.sessionManager.open(link.childSessionFile);
       return (await this.create(sessionManager, link.cwd ?? sessionManager.getCwd())).runtime.session;
     }
 
-    const listed = link?.cwd === undefined
-      ? (await this.sessionManager.listAll?.() ?? []).find((session) => session.id === sessionId)
-      : (await this.sessionManager.list(link.cwd)).find((session) => session.id === sessionId);
-    if (listed === undefined) throw new Error("Session not found");
-    return (await this.create(this.sessionManager.open(listed.path), listed.cwd)).runtime.session;
+    throw new Error("Session not found");
   }
 
   private async subsessionSummaryFields(childSessionId: string): Promise<{ cwd: string; status: SubsessionStatus }> {
-    const active = this.active.get(childSessionId);
+    const link = this.subsessionLinks.get(childSessionId);
+    const active = link === undefined ? undefined : this.activeChildForSubsessionLink(link);
     if (active !== undefined) {
       return { cwd: active.runtime.cwd, status: await this.subsessionStatus(active.runtime.session) };
     }
     const archived = await this.getArchivedExact(childSessionId);
     if (archived !== undefined) return { cwd: archived.cwd, status: "archived" };
-    const link = this.subsessionLinks.get(childSessionId);
     if (link?.childSessionFile !== undefined && (await sessionFileHeaderMatches(link.childSessionFile, { sessionId: childSessionId, parentSessionFile: link.parentSessionFile }))) {
       return { cwd: link.cwd ?? "", status: "idle" };
     }
@@ -733,9 +779,9 @@ export class PiSessionService {
    * parent is busy and delivers immediately when it is idle).
    */
   private updateSubsessionTracking(session: PiAgentSession): void {
-    const childId = session.sessionId;
-    const parentId = this.subsessionParents.get(childId);
-    if (parentId === undefined) return;
+    const link = this.subsessionLinkForActiveChild(session);
+    if (link === undefined) return;
+    const childId = link.childSessionId;
     if (this.hasActiveWork(session)) {
       this.subsessionNotifyArmed.set(childId, true);
       return;
@@ -746,14 +792,17 @@ export class PiSessionService {
     const finalText = finalAssistantText(historyMessages(session));
     const preview = finalText === "" ? "(no output)" : truncateForNotification(finalText);
     const text = `Subsession ${childId} stopped working (status: ${status}). Latest output:\n\n${preview}\n\nUse check_subsession with sessionId "${childId}" for its status and latest output, or read_subsession to look through its full transcript.`;
-    void this.notifyParentOfSubsession(parentId, childId, text);
+    void this.notifyParentOfSubsession(link.parentSessionId, childId, text);
   }
 
   private async getOrOpenParentForSubsession(parentSessionId: string, childSessionId: string): Promise<PiAgentSession> {
-    const active = this.active.get(parentSessionId);
+    const link = this.subsessionLinks.get(childSessionId);
+    if (link?.parentSessionId !== parentSessionId) throw new Error(`Parent session ${parentSessionId} is not available for subsession notification`);
+
+    const active = this.activeParentForSubsessionLink(link);
     if (active !== undefined) return active.runtime.session;
 
-    const parentSessionFile = this.subsessionLinks.get(childSessionId)?.parentSessionFile;
+    const parentSessionFile = link.parentSessionFile;
     if (parentSessionFile === undefined) throw new Error(`Parent session ${parentSessionId} is not available for subsession notification`);
     if ((await readSessionHeaderSummary(parentSessionFile))?.id !== parentSessionId) {
       throw new Error(`Parent session ${parentSessionId} is not available for subsession notification`);
@@ -1150,7 +1199,7 @@ export class PiSessionService {
     // Disarm subsession notification before teardown so the abort below cannot
     // emit a "stopped working" event that notifies the parent (e.g. on archive).
     // The parent/children link is kept so the parent can still see the child.
-    this.subsessionNotifyArmed.delete(sessionId);
+    if (this.subsessionLinkForActiveChild(active.runtime.session) !== undefined) this.subsessionNotifyArmed.delete(sessionId);
     clearSessionQueue(active.runtime.session);
     active.unsubscribe();
     try {
@@ -1705,8 +1754,25 @@ function nonEmptyString(value: string | undefined): string | undefined {
   return value === undefined || value === "" ? undefined : value;
 }
 
+function subsessionHydratedParentKey(parentSessionId: string, parentSessionFile: string | undefined): string {
+  return `${parentSessionId}\0${parentSessionFile ?? ""}`;
+}
+
 function sessionPathsEqual(a: string, b: string): boolean {
   return cwdPathsEqual(a, b);
+}
+
+function sessionFileMatches(session: PiAgentSession, expectedSessionFile: string | undefined): boolean {
+  const sessionFile = nonEmptyString(session.sessionFile);
+  return sessionFile !== undefined && expectedSessionFile !== undefined && sessionPathsEqual(sessionFile, expectedSessionFile);
+}
+
+function activeSessionFileMatches(active: ActiveSession<PiSessionRuntime>, expectedSessionFile: string | undefined): boolean {
+  return sessionFileMatches(active.runtime.session, expectedSessionFile);
+}
+
+function trackedLinkParentFileMatches(link: TrackedSubsessionLink, parentSessionFile: string): boolean {
+  return link.parentSessionFile !== undefined && sessionPathsEqual(link.parentSessionFile, parentSessionFile);
 }
 
 interface SessionHeaderSummary {
