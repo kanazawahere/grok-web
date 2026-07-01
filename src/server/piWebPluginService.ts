@@ -69,22 +69,22 @@ interface PiWebPluginEntry {
 type ArraylessPluginRecord = Omit<PluginRecord, "source" | "scope">;
 
 export class DefaultPiPackageProvider implements PiPackageProvider {
-  private readonly packageManager: DefaultPackageManager;
-
-  constructor(cwd = process.cwd(), agentDir = getAgentDir()) {
-    this.packageManager = new DefaultPackageManager({
-      cwd,
-      agentDir,
-      settingsManager: SettingsManager.create(cwd, agentDir),
-    });
-  }
+  constructor(private readonly cwd = process.cwd(), private readonly agentDir = getAgentDir()) {}
 
   listPackages(): ConfiguredPiPackage[] {
-    return this.packageManager.listConfiguredPackages();
+    return this.createPackageManager().listConfiguredPackages();
   }
 
   getInstalledPath(source: string, scope: "user" | "project"): string | undefined {
-    return this.packageManager.getInstalledPath(source, scope);
+    return this.createPackageManager().getInstalledPath(source, scope);
+  }
+
+  private createPackageManager(): DefaultPackageManager {
+    return new DefaultPackageManager({
+      cwd: this.cwd,
+      agentDir: this.agentDir,
+      settingsManager: SettingsManager.create(this.cwd, this.agentDir),
+    });
   }
 }
 

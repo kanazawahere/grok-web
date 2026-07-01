@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PI_WEB_CAPABILITIES } from "../../../shared/capabilities";
 import type { TerminalCommandRun, Workspace } from "../../../shared/apiTypes";
-import { filesApi, machinesApi, piWebApi, sessionsApi, terminalsApi, workspacesApi } from "./clients";
+import { filesApi, machinesApi, piPackagesApi, piWebApi, sessionsApi, terminalsApi, workspacesApi } from "./clients";
 
 const workspace: Workspace = {
   id: "w/1",
@@ -57,6 +57,38 @@ describe("machine-scoped runtime API", () => {
 
     expect(fetchMock).toHaveBeenCalledOnce();
     expect(fetchCall(fetchMock, 0)[0]).toBe("/api/machines/remote%20a/runtime");
+  });
+});
+
+describe("Pi package API", () => {
+  it("uses the local Pi package-management routes for list and mutations", async () => {
+    const packages = [{ source: "npm:@acme/tools", scope: "user", filtered: false, installedPath: "/home/test/.pi/packages/tools" }];
+    const fetchMock = stubSequenceFetch([
+      jsonResponse({ packages }),
+      jsonResponse({ action: "install", source: "npm:@acme/new-tools", packages }),
+      jsonResponse({ action: "remove", source: "../project-tools", scope: "project", removed: true, packages }),
+      jsonResponse({ action: "update", source: "npm:@acme/tools", packages }),
+      jsonResponse({ action: "update", packages }),
+    ]);
+
+    await expect(piPackagesApi.packages()).resolves.toEqual({ packages });
+    await piPackagesApi.install("npm:@acme/new-tools");
+    await piPackagesApi.remove("../project-tools", "project");
+    await piPackagesApi.update("npm:@acme/tools");
+    await piPackagesApi.update();
+
+    expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
+      "/api/pi-packages",
+      "/api/pi-packages/install",
+      "/api/pi-packages/remove",
+      "/api/pi-packages/update",
+      "/api/pi-packages/update",
+    ]);
+    expect(fetchCall(fetchMock, 1)[1]?.method).toBe("POST");
+    expect(JSON.parse(requestBody(fetchCall(fetchMock, 1)[1]))).toEqual({ source: "npm:@acme/new-tools" });
+    expect(JSON.parse(requestBody(fetchCall(fetchMock, 2)[1]))).toEqual({ source: "../project-tools", scope: "project" });
+    expect(JSON.parse(requestBody(fetchCall(fetchMock, 3)[1]))).toEqual({ source: "npm:@acme/tools" });
+    expect(fetchCall(fetchMock, 4)[1]?.body).toBeUndefined();
   });
 });
 

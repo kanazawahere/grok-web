@@ -1,4 +1,5 @@
 import type { ArchiveSessionsResponse, AuthProviderOption, AuthProviderStatus, AuthProvidersResponse, AuthStatusSource, AuthType, CommandOption, CommandResult, DeleteWorkspaceFileResponse, FileContentResponse, FileSuggestion, FileTreeEntry, FileTreeResponse, GitDiffResponse, GitFileState, GitStatusFile, GitStatusResponse, Machine, MachineHealth, MachineKind, MachineRuntime, MachineStatus, MessagePage, ModelSelectionResponse, MoveWorkspaceFileResponse, OAuthFlowState, PiWebCapability, PiWebComponentStatus, PiWebConfigEnvOverrides, PiWebConfigResponse, PiWebConfigValues, PiWebInstallationInfo, PiWebPluginConfigMap, PiWebPluginInfo, PiWebPluginsResponse, PiWebPluginScope, PiWebReleaseStatus, PiWebRuntimeComponent, PiWebRuntimeResponse, PiWebServiceComponent, PiWebShortcutConfig, PiWebStatusMessage, PiWebStatusResponse, PiWebStatusSeverity, Project, QueuedSessionMessage, SavedPromptAttachment, SessionBulkArchiveResponse, SessionBulkDeleteArchivedResponse, SessionBulkFailure, SessionCleanupExecuteResponse, SessionCleanupPreviewResponse, SessionCleanupProjectSummary, SessionCleanupThresholds, SessionCleanupTotals, SessionInfo, SessionModel, SessionStatus, SlashCommand, TerminalCommandRun, TerminalCommandRunStatus, TerminalInfo, ThinkingLevelsResponse, WriteWorkspaceFileResponse, Workspace, WorkspaceActivity, WorkspaceActivityResponse } from "../../../shared/apiTypes";
+import type { PiPackageInfo, PiPackageMutationAction, PiPackageMutationResponse, PiPackageScope, PiPackagesResponse } from "../../../shared/apiTypes";
 import { isPiWebCapability } from "../../../shared/capabilities";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -626,6 +627,45 @@ function optionalPlugins(value: unknown): PiWebPluginConfigMap | undefined {
 function parsePiWebConfigEnvOverrides(value: unknown): PiWebConfigEnvOverrides {
   const record = requireRecord(value);
   return { host: requireBoolean(record, "host"), port: requireBoolean(record, "port"), allowedHosts: requireBoolean(record, "allowedHosts"), spawnSessions: requireBoolean(record, "spawnSessions"), subsessions: requireBoolean(record, "subsessions") };
+}
+
+export function parsePiPackagesResponse(value: unknown): PiPackagesResponse {
+  const record = requireRecord(value);
+  return { packages: arrayOf(parsePiPackageInfo)(record["packages"]) };
+}
+
+export function parsePiPackageMutationResponse(value: unknown): PiPackageMutationResponse {
+  const record = requireRecord(value);
+  const source = optionalString(record, "source");
+  const scope = record["scope"] === undefined ? undefined : parsePiPackageScope(record["scope"]);
+  const removed = parseOptionalBoolean(record["removed"], "removed");
+  return {
+    action: parsePiPackageMutationAction(record["action"]),
+    ...optionalField("source", source),
+    ...optionalField("scope", scope),
+    ...optionalField("removed", removed),
+    packages: arrayOf(parsePiPackageInfo)(record["packages"]),
+  };
+}
+
+function parsePiPackageInfo(value: unknown): PiPackageInfo {
+  const record = requireRecord(value);
+  return {
+    source: requireString(record, "source"),
+    scope: parsePiPackageScope(record["scope"]),
+    filtered: requireBoolean(record, "filtered"),
+    ...optionalField("installedPath", optionalString(record, "installedPath")),
+  };
+}
+
+function parsePiPackageScope(value: unknown): PiPackageScope {
+  if (value !== "user" && value !== "project") throw new Error("Invalid Pi package scope");
+  return value;
+}
+
+function parsePiPackageMutationAction(value: unknown): PiPackageMutationAction {
+  if (value !== "install" && value !== "remove" && value !== "update") throw new Error("Invalid Pi package mutation action");
+  return value;
 }
 
 export function parsePiWebPluginsResponse(value: unknown): PiWebPluginsResponse {

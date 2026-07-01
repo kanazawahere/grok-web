@@ -18,14 +18,15 @@ export class SettingsPluginsPanel extends LitElement {
     return html`
       <div class="section-heading">
         <div>
-          <h2>Plugins</h2>
-          <p>Enable or disable discovered PI WEB plugins. Changes apply after reloading the browser tab; already-loaded plugin code is not unloaded from the current page.</p>
+          <h2>PI WEB plugins</h2>
+          <p>Enable or disable discovered PI WEB browser plugins. This is separate from installing Pi packages. Changes apply after reloading the browser tab; already-loaded plugin code is not unloaded from the current page.</p>
         </div>
         <button class="secondary" ?disabled=${this.loading} @click=${() => { void this.onReload?.(); }}>Reload</button>
       </div>
       ${this.renderMessages()}
+      <div class="trust-warning"><strong>Trusted code warning:</strong> PI WEB plugins and Pi packages can run with your user permissions. Enable plugins only from sources you trust.</div>
       <div class="plugin-note">Config key: <code>plugins</code>. Plugins are enabled unless their entry sets <code>enabled</code> to <code>false</code>.</div>
-      ${this.loading && plugins.length === 0 ? html`<div class="loading-card">Loading plugins…</div>` : plugins.length === 0 ? html`<div class="loading-card">No external or bundled plugins discovered.</div>` : html`
+      ${this.loading && plugins.length === 0 ? html`<div class="loading-card">Loading PI WEB plugins…</div>` : plugins.length === 0 ? html`<div class="loading-card">No PI WEB browser plugins discovered.</div>` : html`
         <div class="plugin-list">
           ${plugins.map((plugin) => this.renderPlugin(plugin))}
         </div>
@@ -73,11 +74,12 @@ export class SettingsPluginsPanel extends LitElement {
     button { border: 1px solid var(--pi-border); border-radius: 8px; background: var(--pi-surface); color: var(--pi-text); padding: 7px 9px; cursor: pointer; }
     button:disabled, input:disabled { opacity: .55; cursor: not-allowed; }
     .secondary { flex: 0 0 auto; }
-    .message, .loading-card, .plugin-note, .plugin-card { border: 1px solid var(--pi-border); border-radius: 10px; background: var(--pi-surface); padding: 12px; }
-    .message { margin-bottom: 12px; }
+    .message, .loading-card, .trust-warning, .plugin-note, .plugin-card { border: 1px solid var(--pi-border); border-radius: 10px; background: var(--pi-surface); padding: 12px; }
+    .message, .trust-warning { margin-bottom: 12px; }
     .error-message { border-color: var(--pi-danger); color: var(--pi-danger); background: color-mix(in srgb, var(--pi-danger) 10%, var(--pi-surface)); }
     .success-message { border-color: var(--pi-success-border); color: var(--pi-success); background: var(--pi-success-surface); }
     .loading-card, .plugin-note { color: var(--pi-muted); }
+    .trust-warning { border-color: var(--pi-warning-border); color: var(--pi-text); background: var(--pi-warning-surface); line-height: 1.45; }
     .plugin-note { margin-bottom: 14px; }
     code { border: 1px solid var(--pi-border-muted); border-radius: 5px; background: var(--pi-bg); padding: 1px 4px; color: var(--pi-text); font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
     .plugin-list { display: grid; gap: 10px; }

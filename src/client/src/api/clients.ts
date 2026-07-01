@@ -1,4 +1,4 @@
-import type { DeleteWorkspaceFileResponse, FileSuggestion, MoveWorkspaceFileOptions, PiWebConfigValues, PromptAttachment, RunTerminalCommandInput, SessionBulkMutationRef, SessionCleanupRequest, SessionRef, TerminalCommandRun, TerminalCommandRunFilter, WriteWorkspaceFileOptions } from "../../../shared/apiTypes";
+import type { DeleteWorkspaceFileResponse, FileSuggestion, MoveWorkspaceFileOptions, PiPackageInstallRequest, PiPackageRemoveRequest, PiPackageScope, PiPackageUpdateRequest, PiWebConfigValues, PromptAttachment, RunTerminalCommandInput, SessionBulkMutationRef, SessionCleanupRequest, SessionRef, TerminalCommandRun, TerminalCommandRunFilter, WriteWorkspaceFileOptions } from "../../../shared/apiTypes";
 import { request } from "./http";
 import {
   arrayOf,
@@ -24,6 +24,8 @@ import {
   parseModelSelectionResponse,
   parseMoveWorkspaceFileResponse,
   parseOAuthFlowState,
+  parsePiPackageMutationResponse,
+  parsePiPackagesResponse,
   parsePiWebConfigResponse,
   parsePiWebPluginsResponse,
   parsePiWebRuntimeResponse,
@@ -117,6 +119,22 @@ export const configApi = {
 
 export const pluginsApi = {
   plugins: () => request("/api/plugins", parsePiWebPluginsResponse),
+};
+
+export const piPackagesApi = {
+  packages: () => request("/api/pi-packages", parsePiPackagesResponse),
+  install: (source: string) => {
+    const body: PiPackageInstallRequest = { source };
+    return request("/api/pi-packages/install", parsePiPackageMutationResponse, { method: "POST", body: JSON.stringify(body) });
+  },
+  remove: (source: string, scope?: PiPackageScope) => {
+    const body: PiPackageRemoveRequest = scope === undefined ? { source } : { source, scope };
+    return request("/api/pi-packages/remove", parsePiPackageMutationResponse, { method: "POST", body: JSON.stringify(body) });
+  },
+  update: (source?: string) => {
+    const body: PiPackageUpdateRequest | undefined = source === undefined ? undefined : { source };
+    return request("/api/pi-packages/update", parsePiPackageMutationResponse, { method: "POST", ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+  },
 };
 
 export const activityApi = {
@@ -285,6 +303,7 @@ export const api = {
   ...machinesApi,
   ...configApi,
   ...pluginsApi,
+  ...piPackagesApi,
   ...activityApi,
   ...projectsApi,
   ...workspacesApi,

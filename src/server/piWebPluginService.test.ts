@@ -66,6 +66,29 @@ describe("PiWebPluginService", () => {
     expect(manifest.plugins[0]?.module).toMatch(/^\/pi-web-plugins\/review\/dist\/review\.js\?v=\d+$/u);
   });
 
+  it("refreshes Pi package plugin discovery after Pi package settings change", async () => {
+    const agentDir = join(tempDir, "agent");
+    const firstPackageDir = join(tempDir, "first-package");
+    const secondPackageDir = join(tempDir, "second-package");
+    await writePlugin(firstPackageDir, {
+      packageJson: { piWeb: { plugins: [{ id: "first", module: "pi-web-plugin.js" }] } },
+      files: { "pi-web-plugin.js": "export default {};" },
+    });
+    await writePlugin(secondPackageDir, {
+      packageJson: { piWeb: { plugins: [{ id: "second", module: "pi-web-plugin.js" }] } },
+      files: { "pi-web-plugin.js": "export default {};" },
+    });
+    await writePiPackageSettings(agentDir, [firstPackageDir]);
+    const service = new PiWebPluginService({ roots: [], cwd: tempDir, agentDir });
+
+    await expect(service.manifest()).resolves.toMatchObject({ plugins: [{ id: "first" }] });
+
+    await writePiPackageSettings(agentDir, [secondPackageDir]);
+
+    const manifest = await service.manifest();
+    expect(manifest.plugins.map((plugin) => plugin.id)).toEqual(["second"]);
+  });
+
   it("discovers source checkout plugin packages without symlinks", async () => {
     await mkdir(join(tempDir, "src", "server"), { recursive: true });
     await writeFile(join(tempDir, "src", "server", "index.ts"), "export {};\n");
@@ -188,6 +211,11 @@ describe("PiWebPluginService", () => {
     await expect(service.readAsset("safe", "../escape.js")).resolves.toBeUndefined();
   });
 });
+
+async function writePiPackageSettings(agentDir: string, packages: string[]): Promise<void> {
+  await mkdir(agentDir, { recursive: true });
+  await writeFile(join(agentDir, "settings.json"), `${JSON.stringify({ packages }, null, 2)}\n`);
+}
 
 async function writePlugin(root: string, options: { packageJson: unknown; files: Record<string, string> }): Promise<void> {
   await mkdir(root, { recursive: true });

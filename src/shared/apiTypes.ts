@@ -100,6 +100,43 @@ export interface PiWebPluginsResponse {
   plugins: PiWebPluginInfo[];
 }
 
+export type PiPackageScope = "user" | "project";
+
+export interface PiPackageInfo {
+  source: string;
+  scope: PiPackageScope;
+  filtered: boolean;
+  installedPath?: string;
+}
+
+export interface PiPackagesResponse {
+  packages: PiPackageInfo[];
+}
+
+export interface PiPackageInstallRequest {
+  source: string;
+}
+
+export interface PiPackageRemoveRequest {
+  source: string;
+  /** Optional known scope from a listed package; not an install-location picker. */
+  scope?: PiPackageScope;
+}
+
+export interface PiPackageUpdateRequest {
+  /** Omit to update all configured Pi packages. */
+  source?: string;
+}
+
+export type PiPackageMutationAction = "install" | "remove" | "update";
+
+export interface PiPackageMutationResponse extends PiPackagesResponse {
+  action: PiPackageMutationAction;
+  source?: string;
+  scope?: PiPackageScope;
+  removed?: boolean;
+}
+
 export interface PiWebConfigEnvOverrides {
   host: boolean;
   port: boolean;

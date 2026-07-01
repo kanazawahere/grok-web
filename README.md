@@ -103,7 +103,9 @@ Read more: [Fleet and machines guide](https://pi-web.dev/machines)
 
 ## Plugins
 
-PI WEB supports trusted local browser-side plugins that can add actions, workspace panels, and workspace metadata.
+PI WEB supports trusted browser-side PI WEB plugins that can add actions, workspace panels, and workspace metadata.
+
+Pi packages are managed separately through Pi's package manager or **Settings → Pi packages**. Use **Settings → PI WEB plugins** only to enable or disable discovered browser plugins.
 
 Read more: [Plugin API](https://pi-web.dev/plugins)
 
@@ -122,7 +124,7 @@ Project-local PI WEB config lives at:
 <project>/.pi-web/config.json
 ```
 
-Common configuration includes host/port, path access, uploads, plugins, shortcuts, and session daemon options.
+Common configuration includes host/port, path access, uploads, PI WEB plugin enablement, shortcuts, and session daemon options.
 
 Read more: [Configuration reference](https://pi-web.dev/config)
 

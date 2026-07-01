@@ -80,8 +80,8 @@
           <h1>Configure PI WEB where your agents work.</h1>
           <p>
             PI WEB configuration covers the machine-local and project-local settings you usually need: bind address,
-            trusted development-host settings, UI preferences, plugin enablement, file-explorer path access, upload
-            limits, and session-daemon tools.
+            trusted development-host settings, UI preferences, PI WEB plugin enablement, file-explorer path access,
+            upload limits, and session-daemon tools.
           </p>
         </div>
       </section>
@@ -113,6 +113,12 @@
                 config by opening that machine directly or changing files on that machine.
               </p>
               <p>
+                Pi package settings are separate from PI WEB config. They live in Pi's package-manager settings and are
+                managed by Pi (<code>pi install</code>, <code>pi remove</code>, <code>pi update</code>) or
+                <strong>Settings → Pi packages</strong>. The PI WEB <code>plugins</code> config key only enables or
+                disables discovered PI WEB browser plugins.
+              </p>
+              <p>
                 If you installed services with a custom config path, rerun
                 <code>pi-web install --config /path/to/config.json</code> after changing that path or after upgrading from
                 a version that only applied the custom path to the web service. This regenerates service files so the
@@ -136,7 +142,8 @@
                 <li><code>maxUploadBytes</code>: restart both the web/API process and the session daemon.</li>
                 <li><code>spawnSessions</code> / <code>subsessions</code>: restart the session daemon.</li>
                 <li><code>pathAccess</code>: applies on the next request; existing file views may need a browser refresh.</li>
-                <li><code>plugins</code>: reload the browser tab after changing plugin enablement.</li>
+                <li><code>plugins</code>: reload the browser tab after changing PI WEB plugin enablement.</li>
+                <li>Pi package install/remove/update: not a PI WEB config key; after a mutation, reload the browser page for newly discovered PI WEB browser plugins and reload existing Pi sessions (or use <code>/reload</code> in Pi) for session-runtime resources. A routine session daemon restart is not required.</li>
                 <li><code>shortcuts</code>: saved settings apply in the browser after config refresh/save.</li>
               </ul>
             </section>
@@ -144,9 +151,10 @@
             <section id="global-config">
               <h2>Global config example</h2>
               <p>
-                <code>pi-web install</code> creates the initial file. You can also save settings from
-                <strong>Settings → General</strong>, <strong>Settings → Plugins</strong>, <strong>Settings → Keyboard</strong>,
-                and <strong>Settings → Session daemon</strong>.
+                <code>pi-web install</code> creates the initial file. You can also save PI WEB config settings from
+                <strong>Settings → General</strong>, <strong>Settings → PI WEB plugins</strong>,
+                <strong>Settings → Keyboard</strong>, and <strong>Settings → Session daemon</strong>. Pi package operations
+                live separately under <strong>Settings → Pi packages</strong>.
               </p>
               <div class="code-card">
                 <div class="copy-row">
@@ -279,7 +287,7 @@
                       <td>Restart session daemon</td>
                     </tr>
                     <tr>
-                      <td>Plugin enablement/settings</td>
+                      <td>PI WEB plugin enablement/settings</td>
                       <td><code>plugins.&lt;id&gt;.enabled</code>, <code>plugins.&lt;id&gt;.settings</code></td>
                       <td>—</td>
                       <td>Global</td>

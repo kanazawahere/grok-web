@@ -1,12 +1,14 @@
 import { css, html, LitElement, type TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import type { AppAction } from "../actions";
-import { configApi, pluginsApi, type PiWebConfigResponse, type PiWebConfigValues, type PiWebPluginsResponse } from "../api";
+import { configApi, piPackagesApi, pluginsApi, type PiPackageMutationResponse, type PiPackageScope, type PiPackagesResponse, type PiWebConfigResponse, type PiWebConfigValues, type PiWebPluginsResponse } from "../api";
 import type { SettingsSection } from "../settingsRoute";
 import "./settings/SettingsGeneralPanel";
 import "./settings/SettingsSessiondPanel";
+import "./settings/SettingsPackagesPanel";
 import "./settings/SettingsPluginsPanel";
 import "./settings/SettingsShortcutsPanel";
+import { piPackageMutationFollowUpMessage, type PiPackageOperationState } from "./settings/piPackageSettings";
 
 @customElement("settings-dialog")
 export class SettingsDialog extends LitElement {
@@ -17,10 +19,13 @@ export class SettingsDialog extends LitElement {
   @property({ attribute: false }) onConfigSaved?: (config: PiWebConfigValues) => void;
   @state() private configResponse: PiWebConfigResponse | undefined;
   @state() private pluginsResponse: PiWebPluginsResponse | undefined;
+  @state() private packagesResponse: PiPackagesResponse | undefined;
   @state() private loading = true;
   @state() private saving = false;
+  @state() private packageOperation: PiPackageOperationState | undefined;
   @state() private error = "";
   @state() private savedMessage = "";
+  @state() private packageMessage = "";
   private savedMessageTimer: number | undefined;
 
   override connectedCallback(): void {
@@ -49,7 +54,8 @@ export class SettingsDialog extends LitElement {
             <nav class="settings-nav" aria-label="Settings sections">
               ${this.renderNavButton("general", "General", "Server config")}
               ${this.renderNavButton("sessiond", "Session daemon", "Runtime settings")}
-              ${this.renderNavButton("plugins", "Plugins", "Enable and disable")}
+              ${this.renderNavButton("packages", "Pi packages", "Install and manage")}
+              ${this.renderNavButton("plugins", "PI WEB plugins", "Enable and disable")}
               ${this.renderNavButton("shortcuts", "Keyboard", "Shortcuts")}
             </nav>
             <main class="settings-content">
@@ -87,6 +93,21 @@ export class SettingsDialog extends LitElement {
           .onReload=${() => this.loadConfig()}
           .onSave=${(config: PiWebConfigValues) => this.saveConfig(config)}
         ></settings-shortcuts-panel>
+      `;
+    }
+    if (this.section === "packages") {
+      return html`
+        <settings-packages-panel
+          .packagesResponse=${this.packagesResponse}
+          .loading=${this.loading}
+          .operation=${this.packageOperation}
+          .error=${this.error}
+          .operationMessage=${this.packageMessage}
+          .onReload=${() => this.loadConfig()}
+          .onInstallPackage=${(source: string) => this.installPiPackage(source)}
+          .onRemovePackage=${(source: string, scope: PiPackageScope) => this.removePiPackage(source, scope)}
+          .onUpdatePackage=${(source?: string) => this.updatePiPackage(source)}
+        ></settings-packages-panel>
       `;
     }
     if (this.section === "plugins") {
@@ -134,9 +155,10 @@ export class SettingsDialog extends LitElement {
     this.loading = true;
     this.error = "";
     try {
-      const [config, plugins] = await Promise.all([configApi.config(), pluginsApi.plugins()]);
+      const [config, plugins, packages] = await Promise.all([configApi.config(), pluginsApi.plugins(), piPackagesApi.packages()]);
       this.configResponse = config;
       this.pluginsResponse = plugins;
+      this.packagesResponse = packages;
     } catch (error) {
       this.error = `Failed to load settings: ${errorMessage(error)}`;
     } finally {
@@ -163,6 +185,7 @@ export class SettingsDialog extends LitElement {
     this.saving = true;
     this.error = "";
     this.savedMessage = "";
+    this.packageMessage = "";
     try {
       const response = await configApi.saveConfig(config);
       this.configResponse = response;
@@ -175,11 +198,44 @@ export class SettingsDialog extends LitElement {
     }
   }
 
+  private async installPiPackage(source: string): Promise<void> {
+    await this.runPiPackageMutation({ kind: "install", source }, "install Pi package", () => piPackagesApi.install(source));
+  }
+
+  private async removePiPackage(source: string, scope: PiPackageScope): Promise<void> {
+    await this.runPiPackageMutation({ kind: "remove", source }, "remove Pi package", () => piPackagesApi.remove(source, scope));
+  }
+
+  private async updatePiPackage(source?: string): Promise<void> {
+    await this.runPiPackageMutation(source === undefined ? { kind: "update-all" } : { kind: "update", source }, "update Pi packages", () => piPackagesApi.update(source));
+  }
+
+  private async runPiPackageMutation(operation: PiPackageOperationState, label: string, mutate: () => Promise<PiPackageMutationResponse>): Promise<void> {
+    if (this.saving) throw new Error("A settings operation is already running.");
+    this.saving = true;
+    this.packageOperation = operation;
+    this.error = "";
+    this.savedMessage = "";
+    this.packageMessage = "";
+    try {
+      const response = await mutate();
+      this.packagesResponse = { packages: response.packages };
+      await this.refreshPlugins();
+      this.packageMessage = piPackageMutationFollowUpMessage(response.action);
+    } catch (error) {
+      this.error = `Failed to ${label}: ${errorMessage(error)}`;
+      throw error;
+    } finally {
+      this.packageOperation = undefined;
+      this.saving = false;
+    }
+  }
+
   private async refreshPlugins(): Promise<void> {
     try {
       this.pluginsResponse = await pluginsApi.plugins();
     } catch (error) {
-      this.error = `Failed to refresh plugins: ${errorMessage(error)}`;
+      this.error = `Failed to refresh PI WEB plugins: ${errorMessage(error)}`;
     }
   }
 

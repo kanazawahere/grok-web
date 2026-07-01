@@ -13,6 +13,8 @@ PI WEB uses two config files:
 
 Each PI WEB machine has its own config. When using Fleet/machine federation, edit a remote machine's config by opening that machine directly or changing files on that machine.
 
+Pi package settings are separate from PI WEB config. They live in Pi's package-manager settings and are managed by Pi (`pi install`, `pi remove`, `pi update`) or **Settings → Pi packages**. The PI WEB `plugins` config key only enables or disables discovered PI WEB browser plugins.
+
 If you installed services with a custom config path, rerun `pi-web install --config /path/to/config.json` after changing that path or after upgrading from a version that only applied the custom path to the web service. This regenerates service files so the web/API and session daemon use the same `PI_WEB_CONFIG`.
 
 ## Precedence and reloads
@@ -34,7 +36,8 @@ Process restarts depend on the key:
 - `spawnSessions` / `subsessions`: restart the session daemon.
 - `pathAccess`: applies on the next request; existing file views may need a browser refresh.
 - `uploads.defaultFolder`: applies to newly opened Files upload dialogs and new direct drag/drop batches after config/workspace refresh.
-- `plugins`: reload the browser tab after changing plugin enablement.
+- `plugins`: reload the browser tab after changing PI WEB plugin enablement.
+- Pi package install/remove/update: not a PI WEB config key; after a mutation, reload the browser page for newly discovered PI WEB browser plugins and reload existing Pi sessions (or use `/reload` in Pi) for session-runtime resources. A routine session daemon restart is not required.
 - `shortcuts`: saved settings apply in the browser after config refresh/save.
 
 ## Global config example
@@ -169,6 +172,8 @@ The per-request size limit is still controlled by `maxUploadBytes` / `PI_WEB_MAX
 Tracked subsessions let an agent delegate work to child sessions, get notified when children stop working, and inspect their transcripts.
 
 ### Plugin config
+
+The `plugins` key is only for PI WEB browser plugin enablement/settings. It does not install, remove, or update Pi packages; use **Settings → Pi packages** or Pi's package manager for package operations.
 
 Plugins are enabled by default. Set `plugins.<id>.enabled` to `false` to remove a plugin from `/pi-web-plugins/manifest.json` before the browser imports it.
 

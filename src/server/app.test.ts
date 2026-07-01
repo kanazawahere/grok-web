@@ -11,11 +11,12 @@ import { RemoteMachineRequestError, type MachineClient } from "./machines/machin
 import { MachineService } from "./machines/machineService.js";
 import { MachineStore } from "./machines/machineStore.js";
 import { WorkspaceService } from "./workspaces/workspaceService.js";
+import type { PiPackageService } from "./piPackageService.js";
 import type { SessionProxyDaemon } from "./sessiond/sessionProxyRoutes.js";
 import { PI_WEB_CAPABILITIES } from "../shared/capabilities.js";
 import { machineScopedPluginId } from "../shared/machinePluginIds.js";
 import { MAX_IMAGE_PREVIEW_BYTES } from "../shared/workspaceFiles.js";
-import type { PiWebConfigResponse, PiWebConfigValues } from "../shared/apiTypes.js";
+import type { PiPackageInfo, PiWebConfigResponse, PiWebConfigValues } from "../shared/apiTypes.js";
 import type { Project, Workspace } from "./types.js";
 
 let app: FastifyInstance;
@@ -23,6 +24,7 @@ let tempDir: string;
 let projectDir: string;
 let remoteClient: MachineClient | undefined;
 let sessionDaemonRequests: CapturedSessionDaemonRequest[];
+let piPackageRequests: CapturedPiPackageRequest[];
 let piWebConfig: PiWebConfigValues;
 
 beforeEach(async () => {
@@ -30,6 +32,7 @@ beforeEach(async () => {
   projectDir = join(tempDir, "project");
   remoteClient = undefined;
   sessionDaemonRequests = [];
+  piPackageRequests = [];
   piWebConfig = {};
   app = await buildApp({
     projects: new ProjectService(new ProjectStore(join(tempDir, "projects.json"))),
@@ -52,6 +55,7 @@ beforeEach(async () => {
     }),
     sessionDaemon: fakeSessionDaemon(),
     config: fakeConfigService(),
+    piPackages: fakePiPackageService(),
     piWebPlugins: {
       manifest: () => Promise.resolve({ plugins: [{ id: "fake", module: "/pi-web-plugins/fake/plugin.js?v=1", source: "test", scope: "local", machineSpecific: false }] }),
       plugins: () => Promise.resolve({ plugins: [{ id: "fake", module: "/pi-web-plugins/fake/plugin.js?v=1", source: "test", scope: "local", machineSpecific: false, enabled: true }] }),
@@ -387,6 +391,17 @@ describe("buildApp", () => {
     const workspacesResponse = await app.inject({ method: "GET", url: `/api/machines/local/projects/${project.id}/workspaces` });
     expect(workspacesResponse.statusCode).toBe(200);
     expect(workspacesResponse.json<Workspace[]>()).toEqual([expect.objectContaining({ projectId: project.id, path: projectDir })]);
+  });
+
+  it("serves Pi package management routes through the app wiring", async () => {
+    const listResponse = await app.inject({ method: "GET", url: "/api/pi-packages" });
+    expect(listResponse.statusCode).toBe(200);
+    expect(listResponse.json()).toEqual({ packages: [{ source: "npm:@acme/tools", scope: "user", filtered: false, installedPath: "/tmp/pi-tools" }] });
+
+    const installResponse = await app.inject({ method: "POST", url: "/api/pi-packages/install", payload: { source: "npm:@acme/new-tools" } });
+    expect(installResponse.statusCode).toBe(200);
+    expect(installResponse.json()).toMatchObject({ action: "install", source: "npm:@acme/new-tools" });
+    expect(piPackageRequests).toEqual([{ action: "list" }, { action: "install", source: "npm:@acme/new-tools" }]);
   });
 
   it("serves the PI WEB plugin manifest and plugin assets", async () => {
@@ -885,6 +900,12 @@ interface CapturedSessionDaemonRequest {
   body?: unknown;
 }
 
+interface CapturedPiPackageRequest {
+  action: "list" | "install" | "remove" | "update";
+  source?: string;
+  scope?: "user" | "project";
+}
+
 function fakeConfigService() {
   return {
     read: () => piWebConfigResponse(piWebConfig),
@@ -902,6 +923,28 @@ function piWebConfigResponse(config: PiWebConfigValues): PiWebConfigResponse {
     config,
     effectiveConfig: config,
     envOverrides: { host: false, port: false, allowedHosts: false, spawnSessions: false, subsessions: false },
+  };
+}
+
+function fakePiPackageService(): PiPackageService {
+  const packages: PiPackageInfo[] = [{ source: "npm:@acme/tools", scope: "user", filtered: false, installedPath: "/tmp/pi-tools" }];
+  return {
+    list: () => {
+      piPackageRequests.push({ action: "list" });
+      return Promise.resolve({ packages });
+    },
+    install: (source) => {
+      piPackageRequests.push({ action: "install", source });
+      return Promise.resolve({ action: "install", source, packages });
+    },
+    remove: (source, scope = "user") => {
+      piPackageRequests.push({ action: "remove", source, scope });
+      return Promise.resolve({ action: "remove", source, scope, removed: true, packages });
+    },
+    update: (source) => {
+      piPackageRequests.push({ action: "update", ...(source === undefined ? {} : { source }) });
+      return Promise.resolve({ action: "update", ...(source === undefined ? {} : { source }), packages });
+    },
   };
 }
 
