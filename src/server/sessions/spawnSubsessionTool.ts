@@ -78,13 +78,13 @@ const ListSubsessionsParams = Type.Object({});
 
 const CheckSubsessionParams = Type.Object({
   sessionId: Type.String({
-    description: "Id of a subsession you spawned (as returned by spawn_subsession or list_subsessions).",
+    description: "Id of a tracked subsession owned by the calling session, as returned by spawn_subsession or list_subsessions.",
   }),
 });
 
 const ReadSubsessionParams = Type.Object({
   sessionId: Type.String({
-    description: "Id of a subsession you spawned (as returned by spawn_subsession or list_subsessions).",
+    description: "Id of a tracked subsession owned by the calling session, as returned by spawn_subsession or list_subsessions.",
   }),
   roles: Type.Optional(Type.Array(
     Type.Union([Type.Literal("assistant"), Type.Literal("user"), Type.Literal("tool"), Type.Literal("system"), Type.Literal("custom")]),
@@ -126,7 +126,7 @@ function renderEntry(entry: TranscriptEntry): string {
 
 function clipNotice(part: TranscriptEntry["parts"][number]): string {
   if ((part.kind === "text" || part.kind === "thinking" || part.kind === "tool_result") && part.truncated !== undefined) {
-    return ` [+${String(part.truncated.full - part.truncated.shown)} chars truncated; re-read with a larger maxChars]`;
+    return ` [+${String(part.truncated.full - part.truncated.shown)} chars truncated]`;
   }
   return "";
 }
@@ -153,15 +153,15 @@ function renderTranscript(result: SubsessionReadResult): string {
       ? "no messages matched your filters"
       : `no messages in this window (${String(result.matched)} matched outside it)`)
     : `messages ${String(result.start)}–${String(last.index)} of ${String(result.total)} (${String(result.matched)} matched)`;
-  const more = result.hasMore ? `\n\nMore matching messages exist earlier; page back with before: ${String(result.start)}.` : "";
+  const more = result.hasMore ? `\n\nEarlier matching messages exist before index ${String(result.start)}.` : "";
   // Empty entries with matches means the `before` cursor excluded every match
   // (they all sit at index >= before): the agent paged too far back and should
   // raise `before` or omit it, not page back further.
   const body = result.entries.length > 0
     ? result.entries.map(renderEntry).join("\n\n")
     : (result.matched === 0
-      ? "(nothing matched; try widening roles/include, dropping search, or raising limit)"
-      : `(no messages before index ${String(result.start)}; all ${String(result.matched)} matches are later — raise 'before' or omit it)`);
+      ? "(no messages matched the filters)"
+      : `(no messages before index ${String(result.start)}; all ${String(result.matched)} matches have later indexes)`);
   return `Subsession ${result.sessionId} [${result.status}] — ${range}:\n\n${body}${more}`;
 }
 
@@ -178,7 +178,7 @@ export function createSubsessionToolDefinitions(spawningCwd: string, deps: Subse
   const spawnTool = defineTool<typeof SpawnSubsessionParams, SpawnSubsessionResult>({
     name: "spawn_subsession",
     label: "Spawn subsession",
-    description: "Start an asynchronous tracked child session. The call returns after dispatch. When the child becomes idle or errors, a notification starts a new parent turn or queues behind the current one. Do not poll or sleep while waiting: continue useful independent work, or end this turn normally if blocked. Inspect only when immediately actionable.",
+    description: "Start a tracked child session and send it an initial prompt. The call returns after dispatch; the parent is notified when the child stops working and can inspect its status, latest output, and transcript.",
     promptSnippet: "spawn_subsession: start a tracked child session you will be notified about",
     parameters: SpawnSubsessionParams,
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
@@ -193,7 +193,7 @@ export function createSubsessionToolDefinitions(spawningCwd: string, deps: Subse
         ...(ctx.model === undefined ? {} : { model: ctx.model }),
       });
       return {
-        content: [{ type: "text", text: `Started subsession ${result.sessionId} in ${result.cwd}. Continue independent work or end this turn if blocked; do not poll. You will be resumed when it stops working.` }],
+        content: [{ type: "text", text: `Started tracked subsession ${result.sessionId} in ${result.cwd}. The parent will be notified when it stops working.` }],
         details: result,
       };
     },
@@ -202,7 +202,7 @@ export function createSubsessionToolDefinitions(spawningCwd: string, deps: Subse
   const listTool = defineTool<typeof ListSubsessionsParams, { subsessions: SubsessionSummary[] }>({
     name: "list_subsessions",
     label: "List subsessions",
-    description: "List the tracked subsessions you spawned, with their current status (working, idle, error, or unknown).",
+    description: "List tracked child sessions owned by the calling session, with each child's current status (working, idle, error, or unknown).",
     promptSnippet: "list_subsessions: see the tracked child sessions you spawned",
     parameters: ListSubsessionsParams,
     async execute(_toolCallId, _params, _signal, _onUpdate, ctx) {
@@ -210,8 +210,8 @@ export function createSubsessionToolDefinitions(spawningCwd: string, deps: Subse
       const parentSessionFile = ctx.sessionManager.getSessionFile() ?? undefined;
       const subsessions = await deps.list(parentSessionId, parentSessionFile);
       const text = subsessions.length === 0
-        ? "You have not spawned any subsessions."
-        : `Your subsessions:\n${subsessions.map(statusLine).join("\n")}`;
+        ? "No tracked subsessions."
+        : `Tracked subsessions:\n${subsessions.map(statusLine).join("\n")}`;
       return { content: [{ type: "text", text }], details: { subsessions } };
     },
   });
@@ -219,7 +219,7 @@ export function createSubsessionToolDefinitions(spawningCwd: string, deps: Subse
   const checkTool = defineTool<typeof CheckSubsessionParams, SubsessionCheckResult>({
     name: "check_subsession",
     label: "Check subsession",
-    description: "Quick glance at a subsession you spawned: its current status and most recent assistant output. Use this to react to what a subsession produced. When the summary is not enough, use read_subsession to look through its full transcript.",
+    description: "Return a tracked subsession's current status, message count, and most recent assistant output.",
     promptSnippet: "check_subsession: glance at a subsession's status and latest output",
     parameters: CheckSubsessionParams,
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
@@ -237,7 +237,7 @@ export function createSubsessionToolDefinitions(spawningCwd: string, deps: Subse
   const readTool = defineTool<typeof ReadSubsessionParams, SubsessionReadResult>({
     name: "read_subsession",
     label: "Read subsession",
-    description: "Read through the transcript of a subsession you spawned. Returns its messages filtered and paginated however you ask: choose which roles (assistant, user, tool, system, custom) and content kinds (text, thinking, tool_call, tool_result, image) to include, search for a substring (always over full content), cap each value's length with maxChars (omit for full text; clipped parts are flagged so truncation is never silent), optionally include raw tool args, and page backward with 'before'/'limit'. Start narrow (e.g. assistant text with a small maxChars) and widen the filters, raise maxChars, or page further back if you don't find what you need. For just the final result, use check_subsession instead.",
+    description: "Return a filtered, paginated transcript of a tracked subsession. Filters select message roles and content kinds, search full message content, optionally include raw tool arguments, and cap or page the returned entries.",
     promptSnippet: "read_subsession: read through a subsession's transcript with filters",
     parameters: ReadSubsessionParams,
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
