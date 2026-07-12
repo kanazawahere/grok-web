@@ -1,4 +1,5 @@
 import { machineScopedPluginId } from "../../../shared/machinePluginIds";
+import { resolveAppUrl } from "../appUrl";
 import type { PiWebPlugin, PiWebPluginRegistration } from "./types";
 
 export interface PluginManifestEntry {
@@ -17,14 +18,15 @@ export interface LoadExternalPluginsOptions {
 }
 
 export async function loadExternalPlugins(manifestUrl = "pi-web-plugins/manifest.json", options: LoadExternalPluginsOptions = {}): Promise<PiWebPluginRegistration[]> {
-  const manifest = await fetchPluginManifest(manifestUrl);
+  const resolvedManifestUrl = resolveAppUrl(manifestUrl);
+  const manifest = await fetchPluginManifest(resolvedManifestUrl);
   if (manifest === undefined) return [];
 
   const registrations: PiWebPluginRegistration[] = [];
   for (const entry of manifest.plugins) {
     if (options.shouldLoadPlugin?.(entry) === false) continue;
     try {
-      const moduleUrl = new URL(entry.module, new URL(manifestUrl, window.location.href)).toString();
+      const moduleUrl = new URL(entry.module, resolvedManifestUrl).toString();
       const module: unknown = await import(/* @vite-ignore */ moduleUrl);
       const plugin = parsePluginModule(module, moduleUrl);
       registrations.push({

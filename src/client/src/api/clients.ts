@@ -1,4 +1,5 @@
 import type { DeleteWorkspaceFileResponse, FileSuggestion, MoveWorkspaceFileOptions, PiPackageInstallRequest, PiPackageRemoveRequest, PiPackageScope, PiPackageUpdateRequest, PiWebConfigValues, PromptAttachment, RunTerminalCommandInput, SessionBulkMutationRef, SessionCleanupRequest, SessionRef, TerminalCommandRun, TerminalCommandRunFilter, WriteWorkspaceFileOptions } from "../../../shared/apiTypes";
+import { resolveAppUrl } from "../appUrl";
 import { request } from "./http";
 import {
   arrayOf,
@@ -256,7 +257,7 @@ export const terminalsApi = {
 };
 
 async function getOptionalTerminalCommandRun(runId: string, machineId: string): Promise<TerminalCommandRun | undefined> {
-  const response = await fetch(`${machinePrefix(machineId)}/terminal-command-runs/${encodeURIComponent(runId)}`);
+  const response = await fetch(resolveAppUrl(`${machinePrefix(machineId)}/terminal-command-runs/${encodeURIComponent(runId)}`));
   if (response.status === 404) return undefined;
   if (!response.ok) {
     const body: unknown = await response.json().catch((): unknown => ({}));
