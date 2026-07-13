@@ -73,7 +73,7 @@ From a production/runtime install directory, run `./pi-web-docker <command>`. Fr
 | `restart` | `./pi-web-docker restart` | `./docker/pi-web-docker --dev restart` | Restarts `web` and `sessiond`. |
 | `restart-web` | `./pi-web-docker restart-web` | `./docker/pi-web-docker --dev restart-web` | Restarts only the web/API service. |
 | `restart-sessiond` | `./pi-web-docker restart-sessiond` | `./docker/pi-web-docker --dev restart-sessiond` | Restarts the session daemon; active agent runtimes may stop in that Docker stack. |
-| `update` | `./pi-web-docker update` | `./docker/pi-web-docker --dev update` | Rebuilds/recreates the stack. Runtime host updates rerun the installer to refresh Docker assets first. |
+| `update` | `./pi-web-docker update` | `./docker/pi-web-docker --dev update` | Rebuilds/recreates the stack. Runtime host updates rerun the installer to refresh Docker assets first. Development updates require a clean Git checkout with no Git operation in progress. |
 | `status` | `./pi-web-docker status` | `./docker/pi-web-docker --dev status` | Shows Docker Compose service status. |
 | `logs` | `./pi-web-docker logs [web\|sessiond]` | `./docker/pi-web-docker --dev logs [web\|sessiond\|data-init]` | Follows logs; omitting a target follows all services. |
 | `shell` | `./pi-web-docker shell [web\|sessiond]` | `./docker/pi-web-docker --dev shell [web\|sessiond]` | Opens Bash in `web` by default. |
@@ -281,6 +281,10 @@ PI_WEB_DEV_BIND_ADDR=0.0.0.0 \
   ./docker/pi-web-docker --dev start
 ```
 
+Development `update` is intentionally fail-closed. Before starting a Docker helper or build, it requires this repository to be a clean Git checkout, including no staged, modified, or untracked files, and no merge, rebase, cherry-pick, revert, sequenced operation, or bisect in progress. It never stashes, removes, or rewrites developer work; resolve, commit, stash, or remove that work explicitly and rerun the update. This guard applies only to `update`: `start` and restart commands remain available for normal development against an intentionally dirty checkout.
+
+The Docker command rebuilds the current checkout; it does not merge branches or resolve source updates. Perform any Git integration separately, then run the guarded Docker update after the checkout is clean.
+
 You can run the dev stack in the background with:
 
 ```bash
@@ -327,13 +331,9 @@ Use this shared directory to switch between runtime and dev mode, not to run bot
 
 For sessions to appear under the same workspace in both modes, use the same project path in PI WEB. On Linux, prefer host-mounted paths such as `/home/core/<repo>`, `/srv/<project>`, or `/opt/<project>`. On Mac, prefer paths under `/Users/<you>/...`. The dev container also exposes this checkout as `/workspace` so the PI WEB dev server can run from it, but sessions started against `/workspace` are organized under that different working-directory path and will not line up with runtime sessions for the host-mounted path.
 
-When `package-lock.json` changes, rebuild the dev image and recreate the `node_modules` volume so the bind-mounted checkout sees the new dependency tree:
+Development startup keeps the persistent `node_modules` volume synchronized with the dependency tree built into the dev image. When `package.json`, `package-lock.json`, the Node image, or another dependency-build input changes, `start` or `update` rebuilds the image and `data-init` refreshes the volume before `sessiond` starts. Manual volume removal is not required.
 
-```bash
-./docker/pi-web-docker --dev stop
-docker volume rm pi-web-dev_node_modules
-./docker/pi-web-docker --dev start
-```
+If Compose is invoked directly without rebuilding after a manifest change, `data-init` stops with a mismatch message instead of starting against stale dependencies. Run `./docker/pi-web-docker --dev start` or `./docker/pi-web-docker --dev update` to rebuild and synchronize it.
 
 ## Local checkout validation
 
