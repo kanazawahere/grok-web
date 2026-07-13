@@ -11,6 +11,14 @@ If you make changes that affect `src/server/sessiond.ts`, session runtime owners
 
 Changes to the web/API/UI side generally only require the `pi-web-ui-dev.service` autoreload/restart path.
 
+## Documentation boundaries
+
+`README.md` is a concise landing page and quick start. Keep it focused on what PI WEB is, basic requirements, the shortest supported install path, essential commands, the core model, and links to detailed documentation.
+
+Put installation variants, troubleshooting, configuration details, operational behavior, architecture, edge cases, and exhaustive explanations under `docs/`. Avoid duplicating detailed documentation in the README; link to its canonical location instead.
+
+Use `.agents/skills/documentation-guide/SKILL.md` whenever writing, modifying, reviewing, or planning user-facing documentation.
+
 ## Testing guidance
 
 Project-specific testing rules live in `.agents/skills/testing-guide/SKILL.md`.
