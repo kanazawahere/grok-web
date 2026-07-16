@@ -32,8 +32,8 @@ export class CommandSecureInputService implements SecureInputService {
 
     this.active = true;
     try {
-      await runReceiver(config, input);
-      return { accepted: true, receiptId: randomUUID(), acceptedAt: new Date().toISOString() };
+      const receiptId = await runReceiver(config, input);
+      return { accepted: true, receiptId: receiptId ?? randomUUID(), acceptedAt: new Date().toISOString() };
     } finally {
       this.active = false;
     }
@@ -84,13 +84,26 @@ function noStore(reply: FastifyReply): FastifyReply {
   return reply.header("Cache-Control", "no-store").header("X-Content-Type-Options", "nosniff");
 }
 
-function runReceiver(config: SecureInputConfig, input: Buffer): Promise<void> {
+const RECEIPT_RE = /receipt=(\S+)/;
+
+// Surface the receiver's own receipt id (its stdout `receipt=...` line) so the UI
+// shows a handle that maps to the stored secret, instead of an unrelated UUID.
+// Only the receipt line is captured; the secret value is written to stdin and never echoed.
+function parseReceipt(stdout: string): string | undefined {
+  return RECEIPT_RE.exec(stdout)?.[1];
+}
+
+function runReceiver(config: SecureInputConfig, input: Buffer): Promise<string | undefined> {
   return new Promise((resolve, reject) => {
     const [file, ...args] = config.command;
     const child = spawn(file, args, {
       shell: false,
-      stdio: ["pipe", "ignore", "ignore"],
+      stdio: ["pipe", "pipe", "ignore"],
       windowsHide: true,
+    });
+    let stdout = "";
+    child.stdout.on("data", (chunk: Buffer) => {
+      if (stdout.length < 4096) stdout += chunk.toString("utf8");
     });
     let settled = false;
     let pendingError: SecureInputError | undefined;
@@ -100,7 +113,7 @@ function runReceiver(config: SecureInputConfig, input: Buffer): Promise<void> {
       settled = true;
       clearTimeout(timeout);
       if (forceKill !== undefined) clearTimeout(forceKill);
-      if (error === undefined) resolve();
+      if (error === undefined) resolve(parseReceipt(stdout));
       else reject(error);
     };
     const terminate = (error: SecureInputError) => {

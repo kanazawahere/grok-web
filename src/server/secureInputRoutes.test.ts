@@ -102,6 +102,18 @@ describe("command secure input service", () => {
     }
   });
 
+  it("surfaces the receiver's own receipt id parsed from its stdout", async () => {
+    const service = new CommandSecureInputService(() => ({
+      command: [process.execPath, "-e", "const c=[];process.stdin.on('data',x=>c.push(x));process.stdin.on('end',()=>process.stdout.write('saved; nội dung được ẩn; receipt=SECRET_INBOX_20260716T000000Z_ABCDEF\\n'))"],
+      label: "Secret",
+      maxBytes: 4096,
+      timeoutMs: 5_000,
+    }));
+
+    const receipt = await service.submit(Buffer.from("x"));
+    expect(receipt).toMatchObject({ accepted: true, receiptId: "SECRET_INBOX_20260716T000000Z_ABCDEF" });
+  });
+
   it("rejects concurrent submissions while the receiver is active", async () => {
     const service = new CommandSecureInputService(() => ({
       command: [process.execPath, "-e", "setTimeout(() => process.exit(0), 100)"],
