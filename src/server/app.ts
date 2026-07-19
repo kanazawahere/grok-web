@@ -36,6 +36,7 @@ import { registerMachineRoutes } from "./machines/machineRoutes.js";
 import { registerMachineProxyRoutes } from "./machines/machineProxyRoutes.js";
 import { proxyMachinePluginAsset, registerMachinePluginProxyRoutes } from "./machines/machinePluginProxyRoutes.js";
 import { registerSecureInputRoutes, type SecureInputService } from "./secureInputRoutes.js";
+import { registerGrokDnaRoutes } from "./grokDna/routes.js";
 import type { Project, Workspace } from "./types.js";
 
 export interface AppDependencies {
@@ -217,6 +218,8 @@ export async function buildApp(deps: AppDependencies = {}): Promise<FastifyInsta
   registerConfigRoutes(app, invalidatingConfigService);
   registerLocalMachineConfigRoutes(app, invalidatingConfigService);
   registerSecureInputRoutes(app, deps.secureInput);
+  // Grok DNA — CLI-inspired features (no sandbox / worktree): plan, verify, best-of-n, memory, skills, export
+  registerGrokDnaRoutes(app, sessionDaemon instanceof SessionDaemonClient ? sessionDaemon : undefined);
 
   registerMachineRoutes(app, machines);
   registerMachinePluginProxyRoutes(app, machines);

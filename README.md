@@ -67,3 +67,24 @@ jmfederico/pi-web (upstream)
 ## License
 
 MIT (same as Pi Web upstream). ATP distribution markers in `package.json` → `atpDistribution`.
+
+
+## Grok Lab (CLI DNA)
+
+In-app panel + palette actions grafted from **Grok Build CLI** (excluding sandbox & worktree):
+
+| Feature | Where |
+|---------|--------|
+| Plan mode | Grok Lab / palette **Plan mode ON** |
+| Verify loop (`--check`) | **Verify loop** |
+| Best-of-N | Lab form → parallel sessions |
+| Cross-session memory | Lab notes + **Inject context pack** |
+| Skills bridge | `~/.grok/skills`, Claude, CC skills |
+| CLI OIDC | status + **Export CLI → env** |
+| Permission modes | Lab buttons |
+| Prompt lab presets | Architect / Red-team / AAR / Phone |
+| Session export MD | **Export session MD** |
+
+API: `/api/grok-dna/*` · data: `~/.grok-web/grok-dna/`
+
+Shortcut: **Mod+Shift+G** opens Grok Lab (with a workspace selected).

@@ -1,0 +1,9 @@
+{
+  "name": "@atp/grok-dna-plugin",
+  "private": true,
+  "piWeb": {
+    "plugins": [
+      { "id": "grok-dna", "module": "pi-web-plugin.js" }
+    ]
+  }
+}
