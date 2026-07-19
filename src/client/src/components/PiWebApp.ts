@@ -137,7 +137,7 @@ export class PiWebApp extends LitElement {
   private readonly piWebStatusController = new PiWebStatusController(
     () => this.state,
     (patch) => { this.setState(patch); },
-    { onRefreshError: (machineId, error) => { console.warn(`Failed to refresh PI WEB status for ${machineId}`, error); } },
+    { onRefreshError: (machineId, error) => { console.warn(`Failed to refresh Grok Web status for ${machineId}`, error); } },
   );
   private readonly files = new FileExplorerController(
     () => this.state,
@@ -339,7 +339,7 @@ export class PiWebApp extends LitElement {
     try {
       this.applyClientConfig((await configApi.config()).effectiveConfig);
     } catch (error) {
-      console.warn("Failed to load PI WEB config", error);
+      console.warn("Failed to load Grok Web config", error);
     }
   }
 
@@ -1260,7 +1260,7 @@ export class PiWebApp extends LitElement {
     if (this.state.isLoadingProjects) {
       return {
         title: "Loading projects…",
-        body: "Looking for projects you have added to PI WEB.",
+        body: "Looking for projects you have added to Grok Web.",
       };
     }
     if (project === undefined) {
@@ -1507,7 +1507,7 @@ export class PiWebApp extends LitElement {
   }
 
   private async loadExternalPlugins(): Promise<void> {
-    await this.registerExternalPlugins("PI WEB plugins", () => loadExternalPlugins());
+    await this.registerExternalPlugins("Grok Web plugins", () => loadExternalPlugins());
   }
 
   private async loadPluginsForSelectedMachine(): Promise<void> {
@@ -1522,7 +1522,7 @@ export class PiWebApp extends LitElement {
     const existing = this.machinePluginLoadPromises.get(machine.id);
     if (existing !== undefined) return existing;
 
-    const load = this.registerExternalPlugins(`PI WEB plugins from ${machine.name}`, () => loadExternalPlugins(`api/machines/${encodeURIComponent(machine.id)}/pi-web-plugins/manifest.json`, {
+    const load = this.registerExternalPlugins(`Grok Web plugins from ${machine.name}`, () => loadExternalPlugins(`api/machines/${encodeURIComponent(machine.id)}/pi-web-plugins/manifest.json`, {
       machineId: machine.id,
       shouldLoadPlugin: (entry) => this.plugins.shouldLoadRemotePlugin(entry.id, entry.machineSpecific),
     }))
@@ -1539,7 +1539,7 @@ export class PiWebApp extends LitElement {
         try {
           this.plugins.register(registration);
         } catch (error) {
-          console.warn(`Failed to register PI WEB plugin ${registration.id}`, error);
+          console.warn(`Failed to register Grok Web plugin ${registration.id}`, error);
         }
       }
       this.applyPreferredTheme(false);
@@ -1727,7 +1727,7 @@ export class PiWebApp extends LitElement {
 
   private async removeMachine(machine: Machine | undefined = this.state.selectedMachine): Promise<void> {
     if (machine === undefined || machine.kind === "local") return;
-    if (!window.confirm(`Remove ${machine.name}?\n\nThis only removes it from this PI WEB gateway.`)) return;
+    if (!window.confirm(`Remove ${machine.name}?\n\nThis only removes it from this Grok Web gateway.`)) return;
     const wasSelected = this.state.selectedMachine?.id === machine.id;
     if (wasSelected) this.rememberCurrentMachineNavigation();
     const fallback = await this.machines.deleteMachine(machine, { selectFallback: !wasSelected });

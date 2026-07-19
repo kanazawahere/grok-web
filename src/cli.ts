@@ -116,7 +116,7 @@ function supportsSystemdUserServices(): boolean {
 
 function manualRunAdvice(): string {
   return [
-    "Run PI WEB manually from a checkout:",
+    "Run Grok Web manually from a checkout:",
     "  npm run start:sessiond",
     "  GROK_WEB_PORT=2025 npm start",
     "",
@@ -195,7 +195,7 @@ function parseInstallOptions(args: string[]): InstallOptions {
     } else if (arg === "--dev") {
       options.mode = "dev";
     } else if (arg === "--user-systemd") {
-      // Accepted for backwards-compatible readability; PI WEB chooses the native user service backend automatically.
+      // Accepted for backwards-compatible readability; Grok Web chooses the native user service backend automatically.
     } else {
       throw new Error(`Unknown install option: ${arg}`);
     }
@@ -258,7 +258,7 @@ function describeServiceShell(): string {
   if (shell.source === "fallback") {
     return shell.detectedExecutable === null
       ? "could not detect a supported login shell; using bash"
-      : `detected ${shell.detectedExecutable}; using bash because PI WEB currently supports bash, zsh, and fish`;
+      : `detected ${shell.detectedExecutable}; using bash because Grok Web currently supports bash, zsh, and fish`;
   }
   return shell.detectedExecutable === null ? shell.name : `${shell.name} (${shell.detectedExecutable})`;
 }
@@ -306,12 +306,12 @@ function devRootPath(): string {
 function validateDevCheckout(root: string): void {
   const packageJsonPath = join(root, "package.json");
   if (!existsSync(packageJsonPath)) {
-    throw new Error(`Development mode must be installed from a PI WEB checkout. Missing package.json: ${packageJsonPath}`);
+    throw new Error(`Development mode must be installed from a Grok Web checkout. Missing package.json: ${packageJsonPath}`);
   }
 
   const parsed: unknown = JSON.parse(readFileSync(packageJsonPath, "utf8"));
   if (!isRecord(parsed) || parsed["name"] !== PI_WEB_PACKAGE_NAME) {
-    throw new Error(`Development mode must be installed from a PI WEB checkout. ${packageJsonPath} is not ${PI_WEB_PACKAGE_NAME}.`);
+    throw new Error(`Development mode must be installed from a Grok Web checkout. ${packageJsonPath} is not ${PI_WEB_PACKAGE_NAME}.`);
   }
 }
 
@@ -557,9 +557,9 @@ function printServiceStatus(status: ServiceRuntimeStatus): void {
 
 function printServiceStatusReport(backend: ServiceBackend): boolean {
   const refs = statusServiceRefs(backend);
-  console.log(`PI WEB services: ${serviceInstallMode(backend)} (${backend.label})`);
+  console.log(`Grok Web services: ${serviceInstallMode(backend)} (${backend.label})`);
   if (refs.length === 0) {
-    console.log("✗ no PI WEB service files found");
+    console.log("✗ no Grok Web service files found");
     console.log("  Run `pi-web install` or `pi-web install --dev`.");
     return false;
   }
@@ -660,7 +660,7 @@ async function install(args: string[]): Promise<void> {
   const configPath = installConfigPath(options);
   const candidate = nativeServiceInstallCandidate(options, backend, configPath, devRoot);
 
-  console.log(`Running PI WEB ${options.mode} install preflight checks...`);
+  console.log(`Running Grok Web ${options.mode} install preflight checks...`);
   console.log(`Service backend: ${backend.label}`);
   console.log(`Service shell: ${describeServiceShell()}`);
   const result = await installNativeServiceCandidate(candidate, {
@@ -678,7 +678,7 @@ async function install(args: string[]): Promise<void> {
     console.log(`! ${service.description} uses a configured command override; preflight did not execute that arbitrary command.`);
   }
 
-  console.log(`\nPI WEB ${options.mode} services are installed and starting.`);
+  console.log(`\nGrok Web ${options.mode} services are installed and starting.`);
   console.log(`Config: ${configPath}`);
   if (options.mode === "dev") {
     console.log("Open: http://127.0.0.1:8505");
@@ -706,7 +706,7 @@ async function install(args: string[]): Promise<void> {
 async function uninstall(): Promise<void> {
   const backend = requireServiceBackend("pi-web uninstall");
   await uninstallNativeServices(backend);
-  console.log(`PI WEB ${backend.label} removed. Production and development service files were removed; config and data were left in place.`);
+  console.log(`Grok Web ${backend.label} removed. Production and development service files were removed; config and data were left in place.`);
 }
 
 function systemdServiceAction(action: "start" | "stop" | "restart", refs: ServiceRef[]): void {
@@ -833,7 +833,7 @@ function printOptionalDoctorChecks(): void {
   }
   if (missingOptionalTool) {
     console.log("  Install ripgrep, or make rg visible to the service shell, for faster all-file @ suggestions.");
-    console.log("  PI WEB falls back to a bounded filesystem scan when rg is unavailable.");
+    console.log("  Grok Web falls back to a bounded filesystem scan when rg is unavailable.");
   }
 }
 
@@ -953,10 +953,10 @@ function printPathSetupAdvice(shell: NativeServiceShell = detectServiceShell()):
     console.log("  Do not rely only on ~/.bashrc or prompt hooks for tools needed by services or agents.");
   } else if (shell.name === "zsh") {
     console.log("  Detected zsh. Put PATH setup for node/version managers/tools in ~/.zprofile, not only ~/.zshrc.");
-    console.log("  Avoid relying on prompt hooks; PI WEB services run non-interactive login shells.");
+    console.log("  Avoid relying on prompt hooks; Grok Web services run non-interactive login shells.");
   } else {
     console.log("  Detected fish. Prefer universal PATH setup such as `fish_add_path -U ...` for tools needed by services or agents.");
-    console.log("  Avoid relying on prompt hooks; PI WEB services run non-interactive login shells.");
+    console.log("  Avoid relying on prompt hooks; Grok Web services run non-interactive login shells.");
   }
 }
 
@@ -1035,7 +1035,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function help(): void {
-  console.log(`PI WEB
+  console.log(`Grok Web
 
 Usage:
   pi-web install [--dev] [--host 127.0.0.1] [--port 2025] [--config ~/.config/pi-web/config.json]

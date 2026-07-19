@@ -23,7 +23,7 @@ export type SessionRouteRef = ClientSessionRef;
 export type SessionRouteLookup = string | SessionRouteRef;
 
 /**
- * Route-facing session contract for PI WEB's HTTP/WebSocket API.
+ * Route-facing session contract for Grok Web's HTTP/WebSocket API.
  *
  * Keep transport concerns separate from the bundled Pi SDK implementation so
  * routes remain testable. Pi-specific lifecycle hooks such as auth-change

@@ -352,7 +352,7 @@ export function createDevelopmentNativeServicePlan(input: DevelopmentNativeServi
       {
         id: "sessiond",
         manager: nativeServiceManagerRefs.sessiond,
-        description: "PI WEB session daemon (dev)",
+        description: "Grok Web session daemon (dev)",
         shellCommand: "exec npm run start:sessiond",
         strategy: { kind: "development-npm-script", script: "start:sessiond" },
         restart: "never",
@@ -369,7 +369,7 @@ export function createDevelopmentNativeServicePlan(input: DevelopmentNativeServi
       {
         id: "uiDev",
         manager: nativeServiceManagerRefs.uiDev,
-        description: "PI WEB UI dev server",
+        description: "Grok Web UI dev server",
         shellCommand: `exec /usr/bin/env bash -c ${shellSingleQuote(input.shell.name, uiDevCommand)}`,
         strategy: { kind: "development-npm-script-group", scripts: uiDevScripts, interpreter: "bash" },
         restart: "never",
@@ -457,7 +457,7 @@ function productionService(
   return {
     id: serviceId,
     manager: nativeServiceManagerRefs[serviceId],
-    description: isWeb ? "PI WEB server" : "PI WEB session daemon",
+    description: isWeb ? "Grok Web server" : "Grok Web session daemon",
     shellCommand: `exec ${strategyCommand(input.shell, strategy)}`,
     strategy,
     restart: "on-failure",

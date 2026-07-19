@@ -4,7 +4,7 @@ import { createCoreWorkspacePanels } from "./panels";
 
 export const corePlugin: PiWebPlugin = {
   apiVersion: 1,
-  name: "PI WEB Core",
+  name: "Grok Web Core",
   activate: () => ({
     contributions: {
       actions: createCoreActions(),

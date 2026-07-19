@@ -24,7 +24,7 @@ export class SecureInputDialog extends LitElement {
           </header>
           <form @submit=${(event: SubmitEvent) => { event.preventDefault(); void this.submit(); }}>
             ${this.receipt === undefined ? html`
-              <p>Send sensitive input directly to this PI WEB machine's configured receiver. It will not be added to the chat or session transcript.</p>
+              <p>Send sensitive input directly to this Grok Web machine's configured receiver. It will not be added to the chat or session transcript.</p>
               <label for="secure-input-value">${this.label}</label>
               <div class="input-wrap">
                 <input id="secure-input-value" name="secure-input-value" type=${this.revealInput ? "text" : "password"} autocomplete="off" autocapitalize="none" spellcheck="false" ?disabled=${this.submitting} autofocus>

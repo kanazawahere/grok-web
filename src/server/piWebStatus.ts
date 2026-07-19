@@ -14,7 +14,7 @@ import { SessionDaemonClient } from "../sessiond/sessionDaemonClient.js";
 import { isHostAbsoluteAgentDir, isPiCompanionCommand, isSafeAgentCommandForHost, PI_CODING_AGENT_DIR_ENV } from "../config.js";
 import { createPiWebReleaseLookupCache, type PiWebReleaseLookup } from "./piWebReleaseLookupCache.js";
 
-const PI_WEB_PACKAGE_NAME = "@jmfederico/pi-web";
+const PI_WEB_PACKAGE_NAME = "@atp/grok-web";
 const PI_WEB_NPM_SOURCE = `npm:${PI_WEB_PACKAGE_NAME}`;
 const DEFAULT_VERSION = "0.0.0-dev";
 const VERSION_CHECK_TIMEOUT_MS = 5000;
@@ -577,10 +577,10 @@ function buildMessages(components: PiWebStatusResponse["components"], release: P
     messages.push({
       id: "update-available",
       severity: "info",
-      title: "PI WEB update available",
+      title: "Grok Web update available",
       body: commands.update === undefined
-        ? `PI WEB ${release.latestVersion} is available${installedVersion === undefined ? "" : `; installed version is ${installedVersion}`}. Update PI WEB, then restart the services or processes for this installation.`
-        : `PI WEB ${release.latestVersion} is available${installedVersion === undefined ? "" : `; installed version is ${installedVersion}`}. Run the update command to update PI WEB and restart its services.`,
+        ? `Grok Web ${release.latestVersion} is available${installedVersion === undefined ? "" : `; installed version is ${installedVersion}`}. Update Grok Web, then restart the services or processes for this installation.`
+        : `Grok Web ${release.latestVersion} is available${installedVersion === undefined ? "" : `; installed version is ${installedVersion}`}. Run the update command to update Grok Web and restart its services.`,
       ...optionalMessageCommand(commands.update),
     });
   }
@@ -604,8 +604,8 @@ function buildMessages(components: PiWebStatusResponse["components"], release: P
       severity: "warning",
       title: "Session daemon version unavailable",
       body: commands.status === undefined
-        ? `PI WEB could not check the session daemon version${components.sessiond.error === undefined ? "." : `: ${components.sessiond.error}`}. Check the session daemon service or process that runs this installation.`
-        : `PI WEB could not check the session daemon version${components.sessiond.error === undefined ? "." : `: ${components.sessiond.error}`}`,
+        ? `Grok Web could not check the session daemon version${components.sessiond.error === undefined ? "." : `: ${components.sessiond.error}`}. Check the session daemon service or process that runs this installation.`
+        : `Grok Web could not check the session daemon version${components.sessiond.error === undefined ? "." : `: ${components.sessiond.error}`}`,
       ...optionalMessageCommand(commands.status),
     });
   } else if (components.sessiond.stale) {

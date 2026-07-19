@@ -95,7 +95,7 @@ export function formatNodePtyDarwinSpawnHelperCheck(check: NodePtyDarwinSpawnHel
         `✗ ${doctorLabel}`,
         `  ${check.helperPath} exists but is not executable.`,
         `  Known upstream node-pty packaging issue: ${NODE_PTY_SPAWN_HELPER_UPSTREAM_ISSUE_URL}`,
-        `  PI WEB tracking issue: ${PI_WEB_SPAWN_HELPER_ISSUE_URL}`,
+        `  Grok Web tracking issue: ${PI_WEB_SPAWN_HELPER_ISSUE_URL}`,
         "  Proposed workaround:",
         `    ${check.fixCommand}`,
         "  Then run `pi-web doctor` again and retry opening a terminal.",
@@ -128,27 +128,27 @@ function nodePtyNativeDirs(nodePtyRoot: string, platform: NodeJS.Platform, arch:
 function failureDetails(check: Exclude<NodePtyDarwinSpawnHelperCheck, { status: "ok" | "skipped" | "spawn-helper-not-executable" }>): string[] {
   if (check.status === "node-pty-not-found") {
     return [
-      `  Could not resolve node-pty from PI WEB: ${check.message}`,
-      "  Reinstall or update PI WEB, then run `pi-web doctor` again.",
+      `  Could not resolve node-pty from Grok Web: ${check.message}`,
+      "  Reinstall or update Grok Web, then run `pi-web doctor` again.",
     ];
   }
   if (check.status === "native-module-not-found") {
     return [
       `  Could not find node-pty's native pty.node module under ${check.nodePtyRoot}.`,
       `  Expected macOS helper location: ${check.expectedHelperPath}`,
-      "  Reinstall or update PI WEB, then run `pi-web doctor` again.",
+      "  Reinstall or update Grok Web, then run `pi-web doctor` again.",
     ];
   }
   if (check.status === "spawn-helper-missing") {
     return [
       `  Expected helper is missing: ${check.helperPath}`,
-      "  Reinstall or update PI WEB, then run `pi-web doctor` again.",
+      "  Reinstall or update Grok Web, then run `pi-web doctor` again.",
     ];
   }
   if (check.status === "spawn-helper-not-file") {
     return [
       `  Expected helper is not a regular file: ${check.helperPath}`,
-      "  Reinstall or update PI WEB, then run `pi-web doctor` again.",
+      "  Reinstall or update Grok Web, then run `pi-web doctor` again.",
     ];
   }
   return [

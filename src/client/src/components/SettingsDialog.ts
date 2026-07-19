@@ -103,11 +103,11 @@ export class SettingsDialog extends LitElement {
   override render(): TemplateResult {
     return html`
       <div class="backdrop" @mousedown=${() => this.onClose?.()}>
-        <section class="settings-shell" role="dialog" aria-modal="true" aria-label="PI WEB settings" @mousedown=${(event: MouseEvent) => { event.stopPropagation(); }} @keydown=${(event: KeyboardEvent) => { this.handleKeyDown(event); }}>
+        <section class="settings-shell" role="dialog" aria-modal="true" aria-label="Grok Web settings" @mousedown=${(event: MouseEvent) => { event.stopPropagation(); }} @keydown=${(event: KeyboardEvent) => { this.handleKeyDown(event); }}>
           <header class="settings-header">
             <div>
               <span class="eyebrow">Settings</span>
-              <h1>PI WEB</h1>
+              <h1>Grok Web</h1>
             </div>
             <button class="close-button" title="Close settings" aria-label="Close settings" @click=${() => this.onClose?.()}>×</button>
           </header>
@@ -116,7 +116,7 @@ export class SettingsDialog extends LitElement {
               ${this.renderNavButton("general", "General", "Gateway + selected machine")}
               ${this.renderNavButton("sessiond", "Session daemon", "Selected machine")}
               ${this.renderNavButton("packages", "Pi packages", "Selected machine")}
-              ${this.renderNavButton("plugins", "PI WEB plugins", "Selected machine")}
+              ${this.renderNavButton("plugins", "Grok Web plugins", "Selected machine")}
               ${this.renderNavButton("shortcuts", "Keyboard", "Gateway shortcuts")}
             </nav>
             <main class="settings-content">
@@ -319,9 +319,9 @@ export class SettingsDialog extends LitElement {
       else errors.push(`config: ${friendlySelectedMachineSettingsErrorMessage(errorMessage(config.reason), target)}`);
 
       if (plugins.status === "fulfilled") this.selectedPluginsResponse = plugins.value;
-      else errors.push(`PI WEB plugins: ${friendlySelectedMachineSettingsErrorMessage(errorMessage(plugins.reason), target)}`);
+      else errors.push(`Grok Web plugins: ${friendlySelectedMachineSettingsErrorMessage(errorMessage(plugins.reason), target)}`);
 
-      this.pluginError = errors.length === 0 ? "" : `Failed to load PI WEB plugin settings from ${settingsMachineTargetLabel(target)}: ${errors.join("; ")}`;
+      this.pluginError = errors.length === 0 ? "" : `Failed to load Grok Web plugin settings from ${settingsMachineTargetLabel(target)}: ${errors.join("; ")}`;
     } finally {
       if (this.isCurrentPluginLoad(requestSeq, target)) this.pluginLoading = false;
     }
@@ -373,7 +373,7 @@ export class SettingsDialog extends LitElement {
       this.showSavedMessage();
     } catch (error) {
       if (this.isCurrentSettingsTarget(target)) {
-        this.pluginError = `Failed to save PI WEB plugin config on ${settingsMachineTargetLabel(target)}: ${friendlySelectedMachineSettingsErrorMessage(errorMessage(error), target)}`;
+        this.pluginError = `Failed to save Grok Web plugin config on ${settingsMachineTargetLabel(target)}: ${friendlySelectedMachineSettingsErrorMessage(errorMessage(error), target)}`;
       }
     } finally {
       this.saving = false;
@@ -512,7 +512,7 @@ export class SettingsDialog extends LitElement {
       this.pluginsResponse = await pluginsApi.plugins();
       return undefined;
     } catch (error) {
-      return `Failed to refresh gateway PI WEB plugins: ${errorMessage(error)}`;
+      return `Failed to refresh gateway Grok Web plugins: ${errorMessage(error)}`;
     }
   }
 
@@ -522,7 +522,7 @@ export class SettingsDialog extends LitElement {
       if (this.isCurrentSettingsTarget(target)) this.selectedPluginsResponse = response;
       return undefined;
     } catch (error) {
-      return `Config saved, but failed to refresh PI WEB plugins from ${settingsMachineTargetLabel(target)}: ${friendlySelectedMachineSettingsErrorMessage(errorMessage(error), target)}`;
+      return `Config saved, but failed to refresh Grok Web plugins from ${settingsMachineTargetLabel(target)}: ${friendlySelectedMachineSettingsErrorMessage(errorMessage(error), target)}`;
     }
   }
 

@@ -85,7 +85,7 @@ export class SettingsSessiondPanel extends LitElement {
                 ?disabled=${this.loading || this.saving || !profileEditingSupported || agentCommandOverridden}
                 @input=${(event: Event) => { this.updateAgentDraft({ command: inputValue(event) }); }}
               >
-              <small>Set the Pi-compatible companion CLI used for doctor and update checks. The embedded session runtime remains PI WEB's bundled Pi SDK.</small>
+              <small>Set the Pi-compatible companion CLI used for doctor and update checks. The embedded session runtime remains Grok Web's bundled Pi SDK.</small>
             </label>
             <label class="field">
               <span class="field-heading">
@@ -102,7 +102,7 @@ export class SettingsSessiondPanel extends LitElement {
                 ?disabled=${this.loading || this.saving || !profileEditingSupported || agentDirLocked}
                 @input=${(event: Event) => { this.updateAgentDraft({ dir: inputValue(event) }); }}
               >
-              <small>Choose the Pi-compatible auth, models, settings, and sessions PI WEB reads. An alternate command and its required state directory are saved together.</small>
+              <small>Choose the Pi-compatible auth, models, settings, and sessions Grok Web reads. An alternate command and its required state directory are saved together.</small>
             </label>
             <footer class="form-actions">
               <button class="primary" type="submit" ?disabled=${this.loading || this.saving || !profileEditingSupported || (agentCommandOverridden && agentDirLocked)}>${this.saving ? "Saving…" : "Save agent profile"}</button>
@@ -174,7 +174,7 @@ export class SettingsSessiondPanel extends LitElement {
       notices.push({
         type: "info",
         title: `Active Pi-compatible agent profile unavailable on ${this.targetLabel}`,
-        content: "PI WEB cannot compare the desired profile with the running session daemon. Reload after the daemon is available.",
+        content: "Grok Web cannot compare the desired profile with the running session daemon. Reload after the daemon is available.",
       });
     }
     return notices;

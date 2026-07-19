@@ -183,7 +183,7 @@ export async function buildApp(deps: AppDependencies = {}): Promise<FastifyInsta
         ...(activeAgentProfile.status === "available" ? { activeAgentProfile: activeAgentProfile.profile } : {}),
       });
     },
-    { onError: (error) => { app.log.warn({ err: error }, "failed to refresh PI WEB status cache"); } },
+    { onError: (error) => { app.log.warn({ err: error }, "failed to refresh Grok Web status cache"); } },
   );
   const machines = deps.machines ?? new MachineService(undefined, {
     localRuntime: () => getPiWebRuntime(sessionDaemon),

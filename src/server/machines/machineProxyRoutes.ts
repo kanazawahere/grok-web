@@ -94,7 +94,7 @@ function sendSelectedMachineConfigResponse(reply: FastifyReply, upstream: Machin
     return reply.code(409).send({
       error: "Remote machine did not persist the requested agent profile",
       machineId,
-      detail: "Update and restart PI WEB on the remote machine before changing its agent profile.",
+      detail: "Update and restart Grok Web on the remote machine before changing its agent profile.",
     });
   }
   reply.code(upstream.statusCode);
@@ -169,7 +169,7 @@ function applySafeHeaders(reply: FastifyReply, headers: Record<string, string | 
 }
 
 function isSelectedMachineConfigRequestError(error: unknown): boolean {
-  return error instanceof Error && error.message.startsWith("PI WEB selected-machine config");
+  return error instanceof Error && error.message.startsWith("Grok Web selected-machine config");
 }
 
 function errorMessage(error: unknown): string {

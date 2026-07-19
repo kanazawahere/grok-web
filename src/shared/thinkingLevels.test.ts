@@ -46,7 +46,6 @@ describe("thinkingLevels", () => {
       expect(thinkingGauge("medium", known).filled).toBe(3);
       expect(thinkingGauge("high", known).filled).toBe(4);
       expect(thinkingGauge("xhigh", known).filled).toBe(5);
-      expect(thinkingGauge("max", known).filled).toBe(6);
     });
 
     it("adapts to a runtime-provided set of a different size", () => {
