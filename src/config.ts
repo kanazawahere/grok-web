@@ -9,6 +9,8 @@ export const FLEET_PORTS = {
   grokWeb: 2025,
 } as const;
 
+export type AuthSource = "env" | "config" | "cli-oidc" | "none";
+
 export type GrokWebConfig = {
   host: string;
   port: number;
@@ -16,6 +18,10 @@ export type GrokWebConfig = {
   defaultProjectName: string;
   defaultProjectPath: string;
   apiKey: string;
+  /** Where the bearer token came from (never log the token itself). */
+  authSource: AuthSource;
+  /** CLI account email when authSource is cli-oidc */
+  authEmail?: string;
   baseUrl: string;
   model: string;
   maxToolRounds: number;
@@ -32,6 +38,65 @@ export function defaultDataDir(): string {
 
 export function defaultConfigPath(): string {
   return env("GROK_WEB_CONFIG", join(homedir(), ".config/grok-web/config.json"));
+}
+
+/** Official Grok Build CLI login store (`grok login` → OIDC). */
+export function defaultCliAuthPath(): string {
+  return env("GROK_CLI_AUTH", join(homedir(), ".grok/auth.json"));
+}
+
+type CliAuthEntry = {
+  key?: string;
+  auth_mode?: string;
+  email?: string;
+  expires_at?: string;
+  refresh_token?: string;
+};
+
+/**
+ * Read bearer token from Grok Build CLI account (~/.grok/auth.json).
+ * Verified: OIDC access JWT works as Bearer against https://api.x.ai/v1.
+ */
+export function loadCliOidcAuth(authPath = defaultCliAuthPath()): {
+  token: string;
+  email?: string;
+  expiresAt?: string;
+  expired: boolean;
+} | null {
+  if (!existsSync(authPath)) return null;
+  try {
+    const raw = JSON.parse(readFileSync(authPath, "utf8")) as Record<string, CliAuthEntry>;
+    const entries = Object.values(raw);
+    if (!entries.length) return null;
+    // Prefer non-expired entry with a key; otherwise first with key
+    const now = Date.now();
+    const ranked = entries
+      .filter((e) => e?.key && String(e.key).trim())
+      .map((e) => {
+        let expMs = 0;
+        if (e.expires_at) {
+          const t = Date.parse(e.expires_at);
+          if (Number.isFinite(t)) expMs = t;
+        }
+        const expired = expMs > 0 ? expMs <= now : false;
+        return { e, expMs, expired };
+      })
+      .sort((a, b) => {
+        // live tokens first, then latest expiry
+        if (a.expired !== b.expired) return a.expired ? 1 : -1;
+        return b.expMs - a.expMs;
+      });
+    const best = ranked[0];
+    if (!best) return null;
+    return {
+      token: String(best.e.key).trim(),
+      email: best.e.email,
+      expiresAt: best.e.expires_at,
+      expired: best.expired,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export function loadConfig(): GrokWebConfig {
@@ -52,12 +117,31 @@ export function loadConfig(): GrokWebConfig {
 
   const port = Number(env("GROK_WEB_PORT", String(file.port ?? FLEET_PORTS.grokWeb)));
   const host = env("GROK_WEB_HOST", file.host ?? "127.0.0.1");
-  const apiKey =
-    env("XAI_API_KEY") ||
-    env("GROK_API_KEY") ||
-    env("GROK_WEB_API_KEY") ||
-    file.apiKey ||
-    "";
+
+  let apiKey = "";
+  let authSource: AuthSource = "none";
+  let authEmail: string | undefined;
+
+  const fromEnv =
+    env("XAI_API_KEY") || env("GROK_API_KEY") || env("GROK_WEB_API_KEY");
+  if (fromEnv) {
+    apiKey = fromEnv;
+    authSource = "env";
+  } else if (file.apiKey && String(file.apiKey).trim()) {
+    apiKey = String(file.apiKey).trim();
+    authSource = "config";
+  } else {
+    // Prefer official Grok Build CLI session (same account as `grok` TUI)
+    const cli = loadCliOidcAuth();
+    if (cli?.token && !cli.expired) {
+      apiKey = cli.token;
+      authSource = "cli-oidc";
+      authEmail = cli.email;
+    } else if (cli?.token && cli.expired) {
+      // still try expired token? no — force re-login
+      authSource = "none";
+    }
+  }
 
   const cfg: GrokWebConfig = {
     host,
@@ -72,6 +156,8 @@ export function loadConfig(): GrokWebConfig {
       file.defaultProjectPath ?? join(homedir(), "Central_Command"),
     ),
     apiKey,
+    authSource,
+    authEmail,
     baseUrl: env("GROK_BASE_URL", file.baseUrl ?? "https://api.x.ai/v1").replace(/\/$/, ""),
     model: env("GROK_WEB_MODEL", file.model ?? "grok-4"),
     maxToolRounds: Number(env("GROK_WEB_MAX_TOOL_ROUNDS", String(file.maxToolRounds ?? 25))),

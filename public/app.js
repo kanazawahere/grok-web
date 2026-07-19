@@ -65,9 +65,14 @@ async function refreshSessions() {
 async function refreshMeta() {
   try {
     const h = await (await fetch("/api/health")).json();
+    const authLine = h.hasApiKey
+      ? h.authSource === "cli-oidc"
+        ? `CLI ok${h.authEmail ? " · " + h.authEmail : ""}`
+        : `auth ${h.authSource || "ok"}`
+      : "NO AUTH — grok login";
     meta.textContent = [
       `model ${h.model}`,
-      h.hasApiKey ? "key ok" : "NO API KEY",
+      authLine,
       `OC ${h.fleet?.opencodeWeb} · Pi ${h.fleet?.piWeb} · Grok ${h.fleet?.grokWeb}`,
     ].join("\n");
   } catch {

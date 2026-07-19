@@ -25,10 +25,27 @@ Pi Web and OpenCode Web already give the fleet a phone-reachable coding agent UI
 
 Ideas borrowed from community Grok UIs (`cwmaguire/grok-web` activity pane, `superagent-ai/grok-cli` agent tools) — **not** a copy of those repos.
 
+## Auth (same as Grok CLI)
+
+Priority:
+
+1. `XAI_API_KEY` / `GROK_API_KEY` / `GROK_WEB_API_KEY` env
+2. `apiKey` in `~/.config/grok-web/config.json`
+3. **Official Grok Build CLI account** — `~/.grok/auth.json` from `grok login` (OIDC JWT as Bearer on `api.x.ai`)
+
+If you already use the `grok` CLI and are logged in, **no extra key is required**.
+
+```bash
+grok login          # once, if needed
+# then start grok-web — it picks up ~/.grok/auth.json
+```
+
+Token expiry: when CLI JWT expires, run `grok login` again (or use a long-lived API key via env).
+
 ## Quick start
 
 ```bash
-export XAI_API_KEY=xai-...   # or GROK_API_KEY
+# prefer CLI session; or: export XAI_API_KEY=xai-...
 npm install
 npm run build
 # local
@@ -39,7 +56,6 @@ GROK_WEB_HOST=127.0.0.1 GROK_WEB_PORT=2025 node dist/server/index.js
 Dev (tsx, no build):
 
 ```bash
-export XAI_API_KEY=xai-...
 npm install
 npx tsx src/server/index.ts
 ```

@@ -56,6 +56,8 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
       port: cfg.port,
       fleet: FLEET_PORTS,
       hasApiKey: Boolean(cfg.apiKey),
+      authSource: cfg.authSource,
+      authEmail: cfg.authEmail ?? null,
       model: cfg.model,
       time: new Date().toISOString(),
     });
@@ -205,7 +207,8 @@ wss.on("connection", (ws, req) => {
       if (!cfg.apiKey) {
         send(ws, {
           type: "error",
-          message: "Missing XAI_API_KEY or GROK_API_KEY (export before start)",
+          message:
+            "No auth: run `grok login` (CLI OIDC → ~/.grok/auth.json) or export XAI_API_KEY / GROK_API_KEY, then restart grok-web",
         });
         return;
       }
