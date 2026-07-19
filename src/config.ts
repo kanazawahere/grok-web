@@ -163,6 +163,7 @@ export function resolveEffectivePiWebConfig(loaded: LoadedPiWebConfig, options: 
   const port = env["GROK_WEB_PORT"] ?? env["PI_WEB_PORT"] ?? env["PORT"];
   const allowedHosts = env["PI_WEB_ALLOWED_HOSTS"];
   const maxUpload = env["PI_WEB_MAX_UPLOAD_BYTES"];
+  const defaultProjectPath = env["GROK_WEB_DEFAULT_PROJECT_PATH"] ?? env["PI_WEB_DEFAULT_PROJECT_PATH"];
   const agent = effectiveAgentConfig(env, loaded.config);
   return {
     ...loaded,
@@ -172,6 +173,7 @@ export function resolveEffectivePiWebConfig(loaded: LoadedPiWebConfig, options: 
       ...(port !== undefined && port !== "" ? { port: parsePort(port, "PI_WEB_PORT") } : {}),
       ...(allowedHosts !== undefined && allowedHosts !== "" ? { allowedHosts: parseAllowedHostsEnv(allowedHosts) } : {}),
       ...(maxUpload !== undefined && maxUpload !== "" ? { maxUploadBytes: parseMaxUploadBytes(maxUpload, "PI_WEB_MAX_UPLOAD_BYTES") } : {}),
+      ...(defaultProjectPath !== undefined && defaultProjectPath !== "" ? { defaultProjectPath: parseAbsolutePath(defaultProjectPath, "PI_WEB_DEFAULT_PROJECT_PATH", "environment") } : {}),
       uploads: effectiveUploadsConfig(loaded.config),
       // Always resolved (on by default) so the effective config is the single
       // source of truth for the runtime state and the settings UI toggle.
@@ -200,6 +202,7 @@ export function savePiWebConfig(config: PiWebConfig, options: LoadOptions = {}):
   delete existing["maxUploadBytes"];
   delete existing["spawnSessions"];
   delete existing["subsessions"];
+  delete existing["defaultProjectPath"];
   delete existing["agent"];
   const merged = { ...existing, ...piWebConfigRecord(normalized) };
   mkdirSync(dirname(path), { recursive: true });
@@ -226,6 +229,7 @@ function piWebConfigRecord(config: PiWebConfig): Record<string, unknown> {
     ...(config.maxUploadBytes !== undefined ? { maxUploadBytes: config.maxUploadBytes } : {}),
     ...(config.spawnSessions !== undefined ? { spawnSessions: config.spawnSessions } : {}),
     ...(config.subsessions !== undefined ? { subsessions: config.subsessions } : {}),
+    ...(config.defaultProjectPath !== undefined ? { defaultProjectPath: config.defaultProjectPath } : {}),
     ...(config.agent !== undefined ? { agent: config.agent } : {}),
   };
 }
@@ -242,6 +246,7 @@ function parsePiWebConfig(value: Record<string, unknown>, path: string): PiWebCo
     ...(value["maxUploadBytes"] !== undefined ? { maxUploadBytes: parseMaxUploadBytes(value["maxUploadBytes"], "maxUploadBytes", path) } : {}),
     ...(value["spawnSessions"] !== undefined ? { spawnSessions: parseSpawnSessions(value["spawnSessions"], path) } : {}),
     ...(value["subsessions"] !== undefined ? { subsessions: parseSubsessions(value["subsessions"], path) } : {}),
+    ...(value["defaultProjectPath"] !== undefined ? { defaultProjectPath: parseAbsolutePath(value["defaultProjectPath"], "defaultProjectPath", path) } : {}),
     ...(value["agent"] !== undefined ? { agent: parseAgentConfig(value["agent"], path) } : {}),
   };
 }
@@ -289,6 +294,13 @@ function parseMaxUploadBytes(value: unknown, key: string, path = "environment"):
   const bytes = typeof value === "number" ? value : typeof value === "string" && value !== "" ? Number(value) : NaN;
   if (!Number.isInteger(bytes) || bytes < 1) throw new Error(`Grok Web config ${key} must be a positive integer: ${path}`);
   return bytes;
+}
+
+function parseAbsolutePath(value: unknown, key: string, source: string): string {
+  if (typeof value !== "string" || value === "" || !isAbsolute(value)) {
+    throw new Error(`Grok Web config ${key} must be an absolute path: ${source}`);
+  }
+  return normalize(value);
 }
 
 function parseSpawnSessions(value: unknown, path: string): boolean {

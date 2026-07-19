@@ -63,6 +63,16 @@ describe("Grok Web config persistence", () => {
     expect(loadPiWebConfig(testOptions()).config.maxUploadBytes).toBe(1234);
   });
 
+  it("accepts an absolute default project and lets the environment override it", () => {
+    savePiWebConfig({ defaultProjectPath: "/repo/from-config" }, testOptions());
+    expect(effectivePiWebConfig(testOptions()).config.defaultProjectPath).toBe("/repo/from-config");
+    expect(effectivePiWebConfig({ ...testOptions(), env: { PI_WEB_DEFAULT_PROJECT_PATH: "/home/tin/Central_Command" } }).config.defaultProjectPath).toBe("/home/tin/Central_Command");
+  });
+
+  it("rejects a relative default project path", () => {
+    expect(() => savePiWebConfig({ defaultProjectPath: "relative/repo" }, testOptions())).toThrow("defaultProjectPath must be an absolute path");
+  });
+
   it("persists and reads custom agent runtime settings", () => {
     savePiWebConfig({ agent: { command: "acme-agent", dir: "/opt/acme-agent/state" } }, testOptions());
 

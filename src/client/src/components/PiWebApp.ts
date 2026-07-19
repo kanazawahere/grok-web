@@ -10,7 +10,7 @@ import { AuthController } from "../controllers/authController";
 import { FileExplorerController } from "../controllers/fileExplorerController";
 import { GitController } from "../controllers/gitController";
 import { MachineController } from "../controllers/machineController";
-import { ProjectController } from "../controllers/projectController";
+import { ProjectController, projectForDefaultPath } from "../controllers/projectController";
 import { PiWebStatusController } from "../controllers/piWebStatusController";
 import { SessionController } from "../controllers/sessionController";
 import { WorkspaceController, canDeleteWorkspace } from "../controllers/workspaceController";
@@ -156,6 +156,7 @@ export class PiWebApp extends LitElement {
   private readonly machineNavigation = new SessionStorageMachineNavigationMemory();
   private readonly terminalSelection = new SessionStorageTerminalSelectionMemory();
   private readonly appShell = new AppShellController(this);
+  private defaultProjectPath: string | undefined;
   private readonly browserResume = new BrowserResumeController({
     onResumeSignal: () => { this.handleBrowserResumeSignal(); },
     refreshAfterResume: () => this.refreshAfterBrowserResume(),
@@ -236,7 +237,6 @@ export class PiWebApp extends LitElement {
     this.connectRealtime();
     this.piWebStatusTimer = window.setInterval(() => { this.schedulePiWebStatusRefresh(); }, PI_WEB_STATUS_REFRESH_MS);
     void this.refreshWorkspaceActivity();
-    void this.loadClientConfig();
     void this.loadSecureInputStatus();
     void this.ensureGatewayPluginsLoaded();
     void this.loadProjectsAndRestoreRoute().finally(() => { this.schedulePiWebStatusRefresh(); });
@@ -275,6 +275,7 @@ export class PiWebApp extends LitElement {
 
   private async loadProjectsAndRestoreRoute() {
     this.restoreSettingsRoute();
+    await this.loadClientConfig();
     const route = readRoute();
     await this.machines.loadMachines(route.machineId);
     const effectiveRoute = this.routeForSelectedMachine(route);
@@ -282,6 +283,10 @@ export class PiWebApp extends LitElement {
     if (effectiveRoute !== route) this.replaceRouteAndClearWorkspaceQuery(effectiveRoute);
     await this.projects.loadProjects();
     await this.withChatScrollTransition(() => this.restoreRouteFor(effectiveRoute, false));
+    if (effectiveRoute.projectId === undefined && this.state.selectedProject === undefined && this.defaultProjectPath !== undefined) {
+      const defaultProject = projectForDefaultPath(this.state.projects, this.defaultProjectPath);
+      if (defaultProject !== undefined) await this.workspaces.selectProject(defaultProject);
+    }
     if (this.shouldDeferRemoteRouteRestore(effectiveRoute, initialRouteMachineHealth)) this.deferRemoteRouteRestore(effectiveRoute);
     else {
       this.clearPendingRemoteRouteRestore();
@@ -346,6 +351,7 @@ export class PiWebApp extends LitElement {
   private applyClientConfig(config: PiWebConfigValues): void {
     this.shortcutConfig = config.shortcuts ?? {};
     this.workspaceUploadDefaultFolder = effectiveWorkspaceUploadFolder(config);
+    this.defaultProjectPath = config.defaultProjectPath;
   }
 
   private async loadSecureInputStatus(): Promise<void> {

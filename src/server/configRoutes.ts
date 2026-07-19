@@ -131,6 +131,7 @@ function parseConfigRequest(value: unknown, agentPathHost: AgentPathHost = "curr
   const maxUploadBytes = value["maxUploadBytes"];
   const spawnSessions = value["spawnSessions"];
   const subsessions = value["subsessions"];
+  const defaultProjectPath = value["defaultProjectPath"];
   const agent = value["agent"];
   if (host !== undefined) {
     if (typeof host !== "string") throw new Error("Grok Web config host must be a string");
@@ -153,6 +154,10 @@ function parseConfigRequest(value: unknown, agentPathHost: AgentPathHost = "curr
   if (subsessions !== undefined) {
     if (typeof subsessions !== "boolean") throw new Error("Grok Web config subsessions must be a boolean");
     config.subsessions = subsessions;
+  }
+  if (defaultProjectPath !== undefined) {
+    if (typeof defaultProjectPath !== "string" || !defaultProjectPath.startsWith("/")) throw new Error("Grok Web config defaultProjectPath must be an absolute path");
+    config.defaultProjectPath = defaultProjectPath;
   }
   if (agent !== undefined) config.agent = parseAgentRequest(agent, agentPathHost);
   return config;

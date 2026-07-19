@@ -2,6 +2,10 @@ import { api } from "../api";
 import { selectedMachineId, type GetState, type SetState } from "./types";
 import type { WorkspaceController } from "./workspaceController";
 
+export function projectForDefaultPath<T extends { path: string }>(projects: readonly T[], defaultProjectPath: string | undefined): T | undefined {
+  return defaultProjectPath === undefined ? undefined : projects.find((project) => project.path === defaultProjectPath);
+}
+
 export class ProjectController {
   constructor(private readonly getState: GetState, private readonly setState: SetState, private readonly workspaces: WorkspaceController) {}
 
