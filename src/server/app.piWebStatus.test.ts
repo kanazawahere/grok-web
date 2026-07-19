@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { PiWebStatusResponse } from "../shared/apiTypes.js";
 import { buildApp } from "./app.js";
 
-describe("PI WEB status routes", () => {
+describe("Grok Web status routes", () => {
   it("forces a fresh status load when refresh is requested", async () => {
     const get = vi.fn(() => Promise.resolve(status("cached")));
     const refresh = vi.fn(() => Promise.resolve(status("forced")));

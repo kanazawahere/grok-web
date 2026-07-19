@@ -47,8 +47,8 @@ describe("pi-web-docker entrypoint", () => {
       });
 
       const output = `${stdout}${stderr}`;
-      expect(output).toContain("Started detached PI WEB Docker helper: pi-web-docker-update-");
-      expect(output).toContain("Streaming detached PI WEB Docker helper logs inline.");
+      expect(output).toContain("Started detached Grok Web Docker helper: pi-web-docker-update-");
+      expect(output).toContain("Streaming detached Grok Web Docker helper logs inline.");
       expect(output).toContain("Reconnect with: docker logs -f pi-web-docker-update-");
       expect(output).toContain("helper log: update in progress");
       expect(output).not.toContain("Follow progress with:");

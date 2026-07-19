@@ -17,7 +17,7 @@ afterEach(async () => {
   await rm(tempDir, { recursive: true, force: true });
 });
 
-describe("project PI WEB config", () => {
+describe("project Grok Web config", () => {
   it("returns an empty config when the project-local config is absent", async () => {
     await expect(loadProjectPiWebConfig(projectPath)).resolves.toEqual({
       path: join(projectPath, PROJECT_PI_WEB_CONFIG_PATH),
@@ -39,19 +39,19 @@ describe("project PI WEB config", () => {
   it("rejects unsupported project config versions", async () => {
     await writeProjectConfig({ version: 2 });
 
-    await expect(loadProjectPiWebConfig(projectPath)).rejects.toThrow("PI WEB project config version must be 1");
+    await expect(loadProjectPiWebConfig(projectPath)).rejects.toThrow("Grok Web project config version must be 1");
   });
 
-  it("reuses PI WEB path access schema validation", async () => {
+  it("reuses Grok Web path access schema validation", async () => {
     await writeProjectConfig({ version: 1, pathAccess: { allowedPaths: [""] } });
 
-    await expect(loadProjectPiWebConfig(projectPath)).rejects.toThrow("PI WEB config pathAccess.allowedPaths must be an array of non-empty strings");
+    await expect(loadProjectPiWebConfig(projectPath)).rejects.toThrow("Grok Web config pathAccess.allowedPaths must be an array of non-empty strings");
   });
 
-  it("reuses PI WEB upload schema validation", async () => {
+  it("reuses Grok Web upload schema validation", async () => {
     await writeProjectConfig({ version: 1, uploads: { defaultFolder: "../outside" } });
 
-    await expect(loadProjectPiWebConfig(projectPath)).rejects.toThrow("PI WEB config uploads.defaultFolder must not contain path traversal");
+    await expect(loadProjectPiWebConfig(projectPath)).rejects.toThrow("Grok Web config uploads.defaultFolder must not contain path traversal");
   });
 
   it("merges global and project path access in order", async () => {

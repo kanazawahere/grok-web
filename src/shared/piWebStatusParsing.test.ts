@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { PI_WEB_CAPABILITIES } from "./capabilities";
 import { parsePiWebComponentStatus, parsePiWebInstallationInfo, parsePiWebRuntimeResponse, parsePiWebVersionResponse } from "./piWebStatusParsing";
 
-describe("PI WEB status parsing", () => {
+describe("Grok Web status parsing", () => {
   it("parses known top-level and component capabilities while ignoring unknown strings", () => {
     expect(parsePiWebRuntimeResponse({
       packageName: "@jmfederico/pi-web",

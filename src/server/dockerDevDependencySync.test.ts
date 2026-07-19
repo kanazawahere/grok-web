@@ -32,7 +32,7 @@ describe("Docker development dependency synchronization", () => {
     const first = await runSync(fixture);
 
     expect(first.exitCode).toBe(0);
-    expect(first.stderr).toContain("Synchronizing PI WEB Docker dev dependencies");
+    expect(first.stderr).toContain("Synchronizing Grok Web Docker dev dependencies");
     expect(await readFile(join(fixture.targetDir, "fresh", "version.txt"), "utf8")).toBe("0.80.6\n");
     expect(await readlink(join(fixture.targetDir, ".bin", "fresh"))).toBe("../fresh/version.txt");
     expect(await readFile(join(fixture.targetDir, ".pi-web-dev-dependency-generation"), "utf8")).toBe("image-generation-2\n");

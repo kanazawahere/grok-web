@@ -85,7 +85,7 @@ write_initial_dev_config() {
   previous_umask=$(umask)
   umask 077
   cat >"$temp_config" <<'EOF'
-# PI WEB Docker dev settings. Safe to edit.
+# Grok Web Docker dev settings. Safe to edit.
 #
 # docker/pi-web-docker --dev creates this file once and does not
 # overwrite it. Put persistent dev Docker settings here.
@@ -285,7 +285,7 @@ PI_WEB_DEV_PORT=$pi_web_dev_port
 EOF
 mv "$temp_env" "$env_file"
 
-log "Selected PI WEB Docker host profile: $PI_WEB_DETECTED_DOCKER_HOST_PROFILE"
+log "Selected Grok Web Docker host profile: $PI_WEB_DETECTED_DOCKER_HOST_PROFILE"
 if [ -f "$runtime_env_file" ]; then
   log "Reused runtime Docker environment defaults from: $runtime_env_file"
 fi

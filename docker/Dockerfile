@@ -29,7 +29,7 @@ ARG PI_WEB_VERSION=latest
 ARG CACHE_BUST=local
 
 RUN set -eux; \
-  echo "PI WEB Docker build cache bust: ${CACHE_BUST}"; \
+  echo "Grok Web Docker build cache bust: ${CACHE_BUST}"; \
   npm install -g --omit=dev --include=peer --no-audit --no-fund "@jmfederico/pi-web@${PI_WEB_VERSION}"; \
   global_root="$(npm root -g)"; \
   global_prefix="$(npm prefix -g)"; \
@@ -70,7 +70,7 @@ COPY custom-image.d/ /tmp/pi-web-custom-image.d/
 RUN bash -euxo pipefail -c '\
   shopt -s nullglob; \
   for script in /tmp/pi-web-custom-image.d/*.sh; do \
-    echo "Running PI WEB custom image hook: ${script}"; \
+    echo "Running Grok Web custom image hook: ${script}"; \
     bash "${script}"; \
   done; \
   rm -rf /tmp/pi-web-custom-image.d; \

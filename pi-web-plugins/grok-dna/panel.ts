@@ -3,21 +3,53 @@
 export const grokDnaPanelTag = "grok-dna-panel";
 
 export function defineGrokDnaPanel(): void {
-  if (!customElements.get(grokDnaPanelTag)) {
+  if (customElements.get(grokDnaPanelTag) === undefined) {
     customElements.define(grokDnaPanelTag, GrokDnaPanel);
   }
 }
 
-type Ctx = {
+interface SessionRef {
+  id?: string;
+}
+
+interface WorkspaceRef {
+  path?: string;
+}
+
+interface PanelContext {
   state?: {
-    selectedSession?: { id?: string };
-    selectedWorkspace?: { path?: string };
+    selectedSession?: SessionRef;
+    selectedWorkspace?: WorkspaceRef;
   };
-};
+}
+
+interface MemoryNote {
+  id: string;
+  text: string;
+}
+
+interface SkillHit {
+  name: string;
+  preview: string;
+}
+
+interface Preset {
+  id: string;
+  title: string;
+  prompt: string;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function asString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
 
 class GrokDnaPanel extends HTMLElement {
-  private ctx: Ctx | undefined;
-  private root: ShadowRoot;
+  private ctx: PanelContext | undefined;
+  private readonly root: ShadowRoot;
   private log = "";
   private busy = "";
   private statusHtml = "loading…";
@@ -30,7 +62,7 @@ class GrokDnaPanel extends HTMLElement {
     this.root = this.attachShadow({ mode: "open" });
   }
 
-  set context(value: Ctx | undefined) {
+  set context(value: PanelContext | undefined) {
     this.ctx = value;
     void this.refresh();
   }
@@ -41,58 +73,134 @@ class GrokDnaPanel extends HTMLElement {
   }
 
   private sessionId(): string | undefined {
-    return this.ctx?.state?.selectedSession?.id;
+    const id = this.ctx?.state?.selectedSession?.id;
+    return id !== undefined && id !== "" ? id : undefined;
   }
 
   private workspacePath(): string | undefined {
-    return this.ctx?.state?.selectedWorkspace?.path;
+    const path = this.ctx?.state?.selectedWorkspace?.path;
+    return path !== undefined && path !== "" ? path : undefined;
   }
 
-  private async api(path: string, init?: RequestInit): Promise<any> {
+  private async api(path: string, init?: RequestInit): Promise<unknown> {
+    const headers = new Headers(init?.headers);
+    if (!headers.has("content-type")) {
+      headers.set("content-type", "application/json");
+    }
     const res = await fetch(`/api/grok-dna${path}`, {
-      headers: { "content-type": "application/json", ...(init?.headers || {}) },
       ...init,
+      headers,
     });
     const text = await res.text();
-    let json: any = null;
-    try {
-      json = text ? JSON.parse(text) : null;
-    } catch {
-      json = { raw: text };
+    let json: unknown = null;
+    if (text !== "") {
+      try {
+        json = JSON.parse(text);
+      } catch {
+        json = { raw: text };
+      }
     }
-    if (!res.ok) throw new Error(json?.error || text || res.statusText);
+    if (!res.ok) {
+      const errMsg =
+        isRecord(json) && typeof json["error"] === "string"
+          ? json["error"]
+          : text !== ""
+            ? text
+            : res.statusText;
+      throw new Error(errMsg);
+    }
     return json;
   }
 
   private async refresh(): Promise<void> {
     try {
-      const [status, memory, skills, presets] = await Promise.all([
+      const [statusRaw, memoryRaw, skillsRaw, presetsRaw] = await Promise.all([
         this.api("/status"),
         this.api("/memory"),
         this.api("/skills"),
         this.api("/lab/presets"),
       ]);
-      const cli = status.cliAuth || {};
+      const status = isRecord(statusRaw) ? statusRaw : {};
+      const cliRaw = status["cliAuth"];
+      const cli = isRecord(cliRaw) ? cliRaw : {};
+      const tokenPresent = cli["tokenPresent"] === true;
+      const expired = cli["expired"] === true;
+      const email = typeof cli["email"] === "string" ? cli["email"] : "";
+      const memoryCount = typeof status["memoryCount"] === "number" ? status["memoryCount"] : 0;
+      const skillCount = typeof status["skillCount"] === "number" ? status["skillCount"] : 0;
+      const permissionMode =
+        typeof status["permissionMode"] === "string" ? status["permissionMode"] : "default";
+      const preferredModel =
+        typeof status["preferredModel"] === "string" ? status["preferredModel"] : "—";
       this.statusHtml = [
-        pill(cli.tokenPresent && !cli.expired ? "ok" : "warn", `CLI ${cli.tokenPresent ? cli.email || "ok" : "no login"}`),
-        pill("", `memory ${status.memoryCount ?? 0}`),
-        pill("", `skills ${status.skillCount ?? 0}`),
-        pill("", `mode ${status.permissionMode || "default"}`),
-        pill("", `model ${status.preferredModel || "—"}`),
+        pill(tokenPresent && !expired ? "ok" : "warn", `CLI ${tokenPresent ? (email !== "" ? email : "ok") : "no login"}`),
+        pill("", `memory ${String(memoryCount)}`),
+        pill("", `skills ${String(skillCount)}`),
+        pill("", `mode ${permissionMode}`),
+        pill("", `model ${preferredModel}`),
       ].join(" ");
-      this.notesHtml = (memory.notes || [])
+
+      const memory = isRecord(memoryRaw) ? memoryRaw : {};
+      const notesRaw = memory["notes"];
+      const notes: MemoryNote[] = [];
+      if (Array.isArray(notesRaw)) {
+        for (const n of notesRaw) {
+          if (!isRecord(n)) {
+            continue;
+          }
+          const id = asString(n["id"]);
+          const text = asString(n["text"]);
+          if (id !== undefined && text !== undefined) {
+            notes.push({ id, text });
+          }
+        }
+      }
+      this.notesHtml = notes
         .slice(0, 8)
-        .map((n: any) => `<div class="skill"><span class="pill">${esc(n.id)}</span> ${esc(n.text)}</div>`)
+        .map((n) => `<div class="skill"><span class="pill">${esc(n.id)}</span> ${esc(n.text)}</div>`)
         .join("");
-      this.skillsHtml = (skills.skills || [])
+
+      const skillsObj = isRecord(skillsRaw) ? skillsRaw : {};
+      const skillsList = skillsObj["skills"];
+      const skills: SkillHit[] = [];
+      if (Array.isArray(skillsList)) {
+        for (const s of skillsList) {
+          if (!isRecord(s)) {
+            continue;
+          }
+          const name = asString(s["name"]);
+          const preview = asString(s["preview"]) ?? "";
+          if (name !== undefined) {
+            skills.push({ name, preview });
+          }
+        }
+      }
+      this.skillsHtml = skills
         .slice(0, 25)
         .map(
-          (s: any) =>
+          (s) =>
             `<div class="skill"><strong>${esc(s.name)}</strong> <button data-skill="${esc(s.name)}">Inject</button><div class="sub">${esc(s.preview)}</div></div>`,
         )
         .join("");
-      this.presetsHtml = (presets.presets || [])
-        .map((p: any) => `<button data-preset='${esc(JSON.stringify(p))}'>${esc(p.title)}</button>`)
+
+      const presetsObj = isRecord(presetsRaw) ? presetsRaw : {};
+      const presetsList = presetsObj["presets"];
+      const presets: Preset[] = [];
+      if (Array.isArray(presetsList)) {
+        for (const p of presetsList) {
+          if (!isRecord(p)) {
+            continue;
+          }
+          const id = asString(p["id"]);
+          const title = asString(p["title"]);
+          const prompt = asString(p["prompt"]);
+          if (id !== undefined && title !== undefined && prompt !== undefined) {
+            presets.push({ id, title, prompt });
+          }
+        }
+      }
+      this.presetsHtml = presets
+        .map((p) => `<button data-preset="${esc(JSON.stringify(p))}">${esc(p.title)}</button>`)
         .join("");
     } catch (e) {
       this.log = `refresh failed: ${e instanceof Error ? e.message : String(e)}`;
@@ -102,7 +210,7 @@ class GrokDnaPanel extends HTMLElement {
 
   private async inject(text: string, label: string): Promise<void> {
     const sid = this.sessionId();
-    if (!sid) {
+    if (sid === undefined) {
       this.log = "Select a session first.";
       this.renderShell();
       return;
@@ -115,7 +223,9 @@ class GrokDnaPanel extends HTMLElement {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ text }),
       });
-      if (!res.ok) throw new Error((await res.text()).slice(0, 200));
+      if (!res.ok) {
+        throw new Error((await res.text()).slice(0, 200));
+      }
       this.log = `${label}: sent → ${sid}`;
     } catch (e) {
       this.log = `${label} failed: ${e instanceof Error ? e.message : String(e)}`;
@@ -126,32 +236,46 @@ class GrokDnaPanel extends HTMLElement {
   }
 
   private async onClick(ev: Event): Promise<void> {
-    const t = ev.target as HTMLElement;
-    if (!(t instanceof HTMLElement)) return;
-    const btn = t.closest("button") as HTMLButtonElement | null;
-    if (!btn || btn.disabled) return;
+    const t = ev.target;
+    if (!(t instanceof Element)) {
+      return;
+    }
+    const btn = t.closest("button");
+    if (!(btn instanceof HTMLButtonElement) || btn.disabled) {
+      return;
+    }
     const id = btn.dataset["action"];
     const mode = btn.dataset["mode"];
     const skill = btn.dataset["skill"];
     const presetRaw = btn.dataset["preset"];
     try {
-      if (id === "refresh") await this.refresh();
-      else if (id === "import-cli") {
+      if (id === "refresh") {
+        await this.refresh();
+      } else if (id === "import-cli") {
         this.busy = "cli";
         this.renderShell();
         const res = await this.api("/cli-auth/import-env-file", { method: "POST", body: "{}" });
-        this.log = `CLI → ${res.envPath}\n${res.hint}`;
+        if (isRecord(res)) {
+          const envPath = asString(res["envPath"]) ?? "";
+          const hint = asString(res["hint"]) ?? "";
+          this.log = `CLI → ${envPath}\n${hint}`;
+        }
       } else if (id === "compose") {
         const res = await this.api("/compose-context", {
           method: "POST",
           body: JSON.stringify({ sessionId: this.sessionId() }),
         });
-        await this.inject(res.prompt, "Context pack");
-        return;
+        const prompt = isRecord(res) ? asString(res["prompt"]) : undefined;
+        if (prompt !== undefined) {
+          await this.inject(prompt, "Context pack");
+          return;
+        }
       } else if (id === "plan-on" || id === "plan-off") {
         const on = id === "plan-on";
         const sid = this.sessionId();
-        if (!sid) throw new Error("Select a session");
+        if (sid === undefined) {
+          throw new Error("Select a session");
+        }
         const res = await this.api("/plan", {
           method: "POST",
           body: JSON.stringify({
@@ -160,54 +284,96 @@ class GrokDnaPanel extends HTMLElement {
             workspacePath: this.workspacePath(),
           }),
         });
-        if (res.injectPrompt) await this.inject(res.injectPrompt, on ? "Plan ON" : "Plan OFF");
-        this.log = on ? `Plan ON → ${res.planFile}` : "Plan OFF";
+        if (isRecord(res)) {
+          const inject = asString(res["injectPrompt"]);
+          if (inject !== undefined) {
+            await this.inject(inject, on ? "Plan ON" : "Plan OFF");
+            return;
+          }
+          const planFile = asString(res["planFile"]) ?? "";
+          this.log = on ? `Plan ON → ${planFile}` : "Plan OFF";
+        }
       } else if (id === "verify") {
         const res = await this.api("/verify-prompt", { method: "POST", body: "{}" });
-        await this.inject(res.prompt, "Verify");
-        return;
+        const prompt = isRecord(res) ? asString(res["prompt"]) : undefined;
+        if (prompt !== undefined) {
+          await this.inject(prompt, "Verify");
+          return;
+        }
       } else if (id === "export") {
         const sid = this.sessionId();
-        if (!sid) throw new Error("Select a session");
+        if (sid === undefined) {
+          throw new Error("Select a session");
+        }
         const res = await this.api(`/export/${encodeURIComponent(sid)}`);
-        this.log = `Exported → ${res.path}`;
+        if (isRecord(res)) {
+          const path = asString(res["path"]) ?? "";
+          this.log = `Exported → ${path}`;
+        }
       } else if (id === "best") {
-        const task = (this.root.querySelector("#best-task") as HTMLTextAreaElement)?.value?.trim() || "";
-        const n = Number((this.root.querySelector("#best-n") as HTMLInputElement)?.value || 3);
-        if (!task) throw new Error("Enter a task");
+        const taskEl = this.root.querySelector("#best-task");
+        const nEl = this.root.querySelector("#best-n");
+        const task =
+          taskEl instanceof HTMLTextAreaElement ? taskEl.value.trim() : "";
+        const n =
+          nEl instanceof HTMLInputElement ? Number(nEl.value) : 3;
+        if (task === "") {
+          throw new Error("Enter a task");
+        }
         this.busy = "best-of-n";
         this.renderShell();
         const res = await this.api("/best-of-n", {
           method: "POST",
-          body: JSON.stringify({ task, n, cwd: this.workspacePath() }),
+          body: JSON.stringify({
+            task,
+            n: Number.isFinite(n) ? n : 3,
+            cwd: this.workspacePath(),
+          }),
         });
-        this.log = `Best-of-N:\n${JSON.stringify(res.branches, null, 2)}`;
+        this.log = `Best-of-N:\n${JSON.stringify(isRecord(res) ? res["branches"] : res, null, 2)}`;
       } else if (id === "mem") {
-        const text = (this.root.querySelector("#mem") as HTMLTextAreaElement)?.value?.trim() || "";
-        if (!text) return;
+        const memEl = this.root.querySelector("#mem");
+        const text = memEl instanceof HTMLTextAreaElement ? memEl.value.trim() : "";
+        if (text === "") {
+          return;
+        }
         await this.api("/memory", { method: "POST", body: JSON.stringify({ text }) });
-        (this.root.querySelector("#mem") as HTMLTextAreaElement).value = "";
+        if (memEl instanceof HTMLTextAreaElement) {
+          memEl.value = "";
+        }
         await this.refresh();
         return;
-      } else if (mode) {
+      } else if (mode !== undefined && mode !== "") {
         const res = await this.api("/prefs", {
           method: "POST",
           body: JSON.stringify({ mode }),
         });
-        await this.inject(res.injectPrompt, `Mode ${mode}`);
+        const inject = isRecord(res) ? asString(res["injectPrompt"]) : undefined;
+        if (inject !== undefined) {
+          await this.inject(inject, `Mode ${mode}`);
+        }
         await this.refresh();
         return;
-      } else if (skill) {
+      } else if (skill !== undefined && skill !== "") {
         const res = await this.api("/skills/inject-prompt", {
           method: "POST",
           body: JSON.stringify({ name: skill }),
         });
-        await this.inject(res.prompt, `Skill ${skill}`);
-        return;
-      } else if (presetRaw) {
-        const p = JSON.parse(presetRaw) as { prompt: string; title: string };
-        await this.inject(p.prompt, p.title);
-        return;
+        const prompt = isRecord(res) ? asString(res["prompt"]) : undefined;
+        if (prompt !== undefined) {
+          await this.inject(prompt, `Skill ${skill}`);
+          return;
+        }
+      } else if (presetRaw !== undefined && presetRaw !== "") {
+        const parsed: unknown = JSON.parse(presetRaw);
+        if (isRecord(parsed)) {
+          const prompt = asString(parsed["prompt"]);
+          const title = asString(parsed["title"]) ?? "preset";
+          if (prompt !== undefined) {
+            await this.inject(prompt, title);
+            return;
+          }
+        }
       }
     } catch (e) {
       this.log = e instanceof Error ? e.message : String(e);
@@ -285,11 +451,11 @@ class GrokDnaPanel extends HTMLElement {
       <section>
         <h3>Skills bridge</h3>
         <div class="sub">~/.grok · Claude · Central_Command skills</div>
-        ${this.skillsHtml || "<div class='sub'>No skills found</div>"}
+        ${this.skillsHtml !== "" ? this.skillsHtml : "<div class='sub'>No skills found</div>"}
       </section>
       <section>
         <h3>Log</h3>
-        <div class="log">${this.busy ? `(${esc(this.busy)}) ` : ""}${esc(this.log) || "—"}</div>
+        <div class="log">${this.busy !== "" ? `(${esc(this.busy)}) ` : ""}${this.log !== "" ? esc(this.log) : "—"}</div>
       </section>
     `;
     this.root.addEventListener("click", (ev: Event) => {
@@ -301,13 +467,15 @@ class GrokDnaPanel extends HTMLElement {
 function pill(cls: string, text: string): string {
   return `<span class="pill ${cls}">${esc(text)}</span>`;
 }
+
 function esc(s: string): string {
-  return String(s ?? "")
+  return s
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
+
 function dis(busy: string): string {
-  return busy ? "disabled" : "";
+  return busy !== "" ? "disabled" : "";
 }

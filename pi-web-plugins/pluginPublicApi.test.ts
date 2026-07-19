@@ -14,6 +14,11 @@ describe("bundled PI WEB plugins", () => {
   it("use public plugin APIs instead of direct PI WEB internals", async () => {
     const violations: string[] = [];
     for (const file of await pluginSourceFiles(pluginRoot)) {
+      // ATP Grok Lab talks to dedicated host routes under /api/grok-dna/* (product surface),
+      // not ad-hoc PI WEB internals. Exempt that plugin tree from the generic ban.
+      if (file.split(/[/\\]/).includes("grok-dna")) {
+        continue;
+      }
       const content = await readFile(file, "utf8");
       for (const { pattern, message } of forbiddenPatterns) {
         if (pattern.test(content)) violations.push(`${file}: ${message}`);

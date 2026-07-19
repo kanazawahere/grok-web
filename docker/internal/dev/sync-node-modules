@@ -43,14 +43,14 @@ if [ -f "$marker_file" ]; then
 fi
 
 if [ "$current_generation" = "$expected_generation" ]; then
-  log "PI WEB Docker dev dependencies are current."
+  log "Grok Web Docker dev dependencies are current."
   exit 0
 fi
 
-log "Synchronizing PI WEB Docker dev dependencies from the rebuilt image ..."
+log "Synchronizing Grok Web Docker dev dependencies from the rebuilt image ..."
 # Write the marker only after a complete copy so a failed init retries next time.
 find "$target_dir" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
 cp -a "$seed_dir/node_modules/." "$target_dir/"
 printf '%s\n' "$expected_generation" >"$marker_file"
 chmod 0666 "$marker_file"
-log "PI WEB Docker dev dependencies synchronized."
+log "Grok Web Docker dev dependencies synchronized."

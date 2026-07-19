@@ -295,7 +295,7 @@ describe("Docker command assets", () => {
 
     expect(result.exitCode).not.toBe(0);
     expect(result.stderr).toContain("checkout has uncommitted changes");
-    expect(result.stdout).not.toContain("Started detached PI WEB Docker helper");
+    expect(result.stdout).not.toContain("Started detached Grok Web Docker helper");
     await expect(readFile(fakeDocker.logPath, "utf8")).rejects.toThrow();
     await expect(readFile(helperLog, "utf8")).rejects.toThrow();
   });
@@ -367,7 +367,7 @@ describe("Docker command assets", () => {
     });
 
     expect(result.exitCode).not.toBe(0);
-    expect(result.stderr).toContain("this PI WEB Docker container is in dev mode");
+    expect(result.stderr).toContain("this Grok Web Docker container is in dev mode");
   });
 
   dockerCommandIt("routes production install to the bootstrap installer", async () => {
@@ -399,8 +399,8 @@ describe("Docker command assets", () => {
 
     const result = await runDockerCommand(["restart-sessiond"], runtimeEnv(fakeDocker, installDir));
 
-    expect(result.stdout).toContain("Started detached PI WEB Docker helper");
-    expect(result.stdout).toContain("Streaming detached PI WEB Docker helper logs inline.");
+    expect(result.stdout).toContain("Started detached Grok Web Docker helper");
+    expect(result.stdout).toContain("Streaming detached Grok Web Docker helper logs inline.");
     expect(result.stdout).toContain("Reconnect with: docker logs -f pi-web-docker-restart-sessiond-");
     expect(result.stdout).toContain("fake helper log");
     const log = await readFile(fakeDocker.logPath, "utf8");
@@ -539,7 +539,7 @@ async function createCleanDevGitRepoWithFakeHelper(logPath: string): Promise<str
   await execUtf8("git", ["-C", devRoot, "add", "."], env);
   await execUtf8("git", [
     "-C", devRoot,
-    "-c", "user.name=PI WEB Test",
+    "-c", "user.name=Grok Web Test",
     "-c", "user.email=pi-web-test@example.invalid",
     "-c", "core.hooksPath=/dev/null",
     "commit", "--quiet", "--no-gpg-sign", "-m", "test fixture",

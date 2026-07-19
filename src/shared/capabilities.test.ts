@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { effectivePiWebCapabilities, PI_WEB_CAPABILITIES, SESSIOND_RUNTIME_CAPABILITIES, WEB_RUNTIME_CAPABILITIES, parseKnownPiWebCapabilities } from "./capabilities";
 
-describe("PI WEB capabilities", () => {
+describe("Grok Web capabilities", () => {
   it("advertises web-only capabilities without requiring session daemon support", () => {
     expect(WEB_RUNTIME_CAPABILITIES).toContain(PI_WEB_CAPABILITIES.piPackagesManage);
     expect(WEB_RUNTIME_CAPABILITIES).toContain(PI_WEB_CAPABILITIES.selectedMachineSettings);

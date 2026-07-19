@@ -32,7 +32,7 @@ describe("native service rendering", () => {
     const plan = developmentPlan("systemd");
     const unit = renderSystemdUnit(plan, planService(plan, 1));
 
-    expect(unit).toContain("Description=PI WEB UI dev server");
+    expect(unit).toContain("Description=Grok Web UI dev server");
     expect(unit).toContain("After=pi-web-sessiond.service\nWants=pi-web-sessiond.service");
     expect(unit).toContain("WorkingDirectory=/checkout\\x20with\\x20space");
     expect(unit).toContain('Environment="PI_WEB_CONFIG=/home/user/config with \\"quote\\".json"');

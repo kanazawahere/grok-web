@@ -12,8 +12,8 @@ describe("defaultSessionArchiveFilePath", () => {
     expect(defaultSessionArchiveFilePath({ PI_WEB_DATA_DIR: "managed-state" }, "/tmp/pi-web")).toBe(resolve("/tmp/pi-web", "managed-state", "archived-sessions.json"));
   });
 
-  it("preserves the ~/.pi-web default when PI_WEB_DATA_DIR is unset", () => {
-    expect(defaultSessionArchiveFilePath({}, "/tmp/pi-web")).toBe(join(homedir(), ".pi-web", "archived-sessions.json"));
+  it("preserves the ~/.grok-web default when PI_WEB_DATA_DIR is unset", () => {
+    expect(defaultSessionArchiveFilePath({}, "/tmp/pi-web")).toBe(join(homedir(), ".grok-web", "archived-sessions.json"));
   });
 });
 

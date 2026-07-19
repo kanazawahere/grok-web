@@ -19,8 +19,8 @@ explicitly with --dev.
 
 Commands:
   install                 Run the production one-line/bootstrap installer
-  start                   Start the PI WEB Docker stack
-  stop                    Stop the PI WEB Docker stack without deleting data
+  start                   Start the Grok Web Docker stack
+  stop                    Stop the Grok Web Docker stack without deleting data
   restart                 Restart web and sessiond
   restart-web             Restart only the web service
   restart-sessiond        Restart only the session daemon
@@ -33,7 +33,7 @@ Commands:
   doctor                  Print static Docker command diagnostics
   cli <pi-web args...>    Run the pi-web CLI in the web container
 
-Update and restart commands launched inside a PI WEB Docker container start an
+Update and restart commands launched inside a Grok Web Docker container start an
 independent helper container first, then stream the helper logs inline. The
 helper continues running if the terminal or web/sessiond exits.
 EOF
@@ -192,9 +192,9 @@ runtime_root() {
   fi
   case "$root" in
     /*) ;;
-    *) die "PI WEB Docker runtime root must be an absolute path: $root" ;;
+    *) die "Grok Web Docker runtime root must be an absolute path: $root" ;;
   esac
-  [ -d "$root" ] || die "PI WEB Docker runtime root does not exist: $root"
+  [ -d "$root" ] || die "Grok Web Docker runtime root does not exist: $root"
   printf '%s\n' "$root"
 }
 
@@ -210,9 +210,9 @@ dev_root() {
   [ -n "$root" ] || die "PI_WEB_DOCKER_DEV_REPO_ROOT must be set or pi-web-docker must run from this checkout's docker/ directory"
   case "$root" in
     /*) ;;
-    *) die "PI WEB Docker development repo root must be an absolute path: $root" ;;
+    *) die "Grok Web Docker development repo root must be an absolute path: $root" ;;
   esac
-  [ -d "$root" ] || die "PI WEB Docker development repo root does not exist: $root"
+  [ -d "$root" ] || die "Grok Web Docker development repo root does not exist: $root"
   printf '%s\n' "$root"
 }
 
@@ -290,10 +290,10 @@ enforce_container_mode_match() {
   [ -n "$runtime_mode" ] || return 0
   case "$runtime_mode" in
     runtime|dev) ;;
-    *) die "unsupported PI_WEB_DOCKER_MODE inside PI WEB Docker runtime: $runtime_mode" ;;
+    *) die "unsupported PI_WEB_DOCKER_MODE inside Grok Web Docker runtime: $runtime_mode" ;;
   esac
   selected_mode=$(docker_mode)
-  [ "$runtime_mode" = "$selected_mode" ] || die "this PI WEB Docker container is in $runtime_mode mode; rerun pi-web-docker with the matching mode flag"
+  [ "$runtime_mode" = "$selected_mode" ] || die "this Grok Web Docker container is in $runtime_mode mode; rerun pi-web-docker with the matching mode flag"
 }
 
 docker_compose() {
@@ -441,7 +441,7 @@ run_restart_sessiond() {
 run_restart_all() {
   assert_no_args restart "$@"
   # Restart web first to mirror native service commands. Detached helpers keep
-  # running after sessiond restarts, so this is safe when launched from PI WEB.
+  # running after sessiond restarts, so this is safe when launched from Grok Web.
   compose_for_install restart web sessiond
 }
 
@@ -463,15 +463,15 @@ run_update() {
         run_runtime_host_update
       fi
       cache_bust=${CACHE_BUST:-pi-web-docker-$(date -u +%Y%m%dT%H%M%SZ)}
-      log "Building PI WEB runtime image with CACHE_BUST=$cache_bust ..."
+      log "Building Grok Web runtime image with CACHE_BUST=$cache_bust ..."
       CACHE_BUST=$cache_bust runtime_compose build --pull --no-cache
-      log "Recreating PI WEB runtime services ..."
+      log "Recreating Grok Web runtime services ..."
       runtime_compose up -d --force-recreate --remove-orphans
       ;;
     dev)
-      log "Rebuilding PI WEB development image ..."
+      log "Rebuilding Grok Web development image ..."
       dev_compose build --pull
-      log "Recreating PI WEB development services ..."
+      log "Recreating Grok Web development services ..."
       dev_compose up -d --force-recreate --remove-orphans
       ;;
   esac
@@ -519,8 +519,8 @@ run_shell() {
 run_doctor() {
   assert_no_args doctor "$@"
   root=$(control_root)
-  printf 'PI WEB Docker mode: %s\n' "$(docker_mode)"
-  printf 'PI WEB Docker root: %s\n' "$root"
+  printf 'Grok Web Docker mode: %s\n' "$(docker_mode)"
+  printf 'Grok Web Docker root: %s\n' "$root"
   case "$(docker_mode)" in
     runtime)
       [ -f "$root/.env" ] && printf 'Runtime env: %s\n' "$root/.env" || printf 'Runtime env: missing (%s/.env)\n' "$root"
@@ -658,7 +658,7 @@ cleanup_old_helpers() {
 stream_detached_helper_logs() {
   helper_name=$1
   printf '\n'
-  printf 'Streaming detached PI WEB Docker helper logs inline.\n'
+  printf 'Streaming detached Grok Web Docker helper logs inline.\n'
   printf 'If this terminal disconnects, the helper keeps running.\n'
   printf 'Reconnect with: docker logs -f %s\n' "$helper_name"
   printf '\n'
@@ -686,7 +686,7 @@ stream_detached_helper_logs() {
 
 start_detached_helper() {
   action=$1
-  is_truthy "${PI_WEB_DOCKER_RUNTIME:-}" || die "detached helpers are only available inside the PI WEB Docker runtime"
+  is_truthy "${PI_WEB_DOCKER_RUNTIME:-}" || die "detached helpers are only available inside the Grok Web Docker runtime"
   require_command docker
   selected_mode=$(docker_mode)
   root=$(control_root)
@@ -759,7 +759,7 @@ start_detached_helper() {
   set -- "$@" __run-detached "$action"
 
   container_id=$(docker "$@") || die "could not start detached Docker helper"
-  printf 'Started detached PI WEB Docker helper: %s\n' "$helper_name"
+  printf 'Started detached Grok Web Docker helper: %s\n' "$helper_name"
   printf 'Container ID: %s\n' "$container_id"
   stream_detached_helper_logs "$helper_name"
 }
@@ -767,9 +767,9 @@ start_detached_helper() {
 run_detached_action() {
   action=${1:-}
   [ "$#" -eq 1 ] || die "__run-detached requires exactly one action"
-  is_truthy "${PI_WEB_DOCKER_RUNTIME:-}" || die "detached actions only run inside the PI WEB Docker runtime"
+  is_truthy "${PI_WEB_DOCKER_RUNTIME:-}" || die "detached actions only run inside the Grok Web Docker runtime"
   require_command docker
-  log "PI WEB Docker helper running action: $action"
+  log "Grok Web Docker helper running action: $action"
   case "$action" in
     update) run_update ;;
     restart) run_restart_all ;;
@@ -777,7 +777,7 @@ run_detached_action() {
     restart-sessiond) run_restart_sessiond ;;
     *) die "unsupported detached action: $action" ;;
   esac
-  log "PI WEB Docker helper completed action: $action"
+  log "Grok Web Docker helper completed action: $action"
 }
 
 run_restart_or_update() {

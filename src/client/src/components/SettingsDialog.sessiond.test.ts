@@ -87,7 +87,7 @@ describe("settings-dialog session daemon machine targeting", () => {
     await callDialogPromise(dialog, "saveSessiondConfig", { agent: { command: "agent-lab", dir: "/srv/agent-lab" } });
 
     expect(saveSpy).not.toHaveBeenCalled();
-    expect(getDialogProperty(dialog, "sessiondError")).toBe("Pi-compatible agent profile settings are not available on Lab Mac. Update and restart PI WEB on that machine, then try again.");
+    expect(getDialogProperty(dialog, "sessiondError")).toBe("Pi-compatible agent profile settings are not available on Lab Mac. Update and restart Grok Web on that machine, then try again.");
   });
 
   it("saves a remote agent profile when granular support is advertised", async () => {
@@ -164,9 +164,9 @@ describe("settings-dialog session daemon machine targeting", () => {
     expect(getDialogProperty(dialog, "sessiondConfigResponse")).toBeUndefined();
     expect(getDialogProperty(dialog, "accessConfigResponse")).toBeUndefined();
     expect(getDialogProperty(dialog, "selectedPluginConfigResponse")).toBeUndefined();
-    expect(getDialogProperty(dialog, "sessiondError")).toBe("Selected-machine settings are not available on Lab Mac. Update and restart PI WEB on that machine, then try again.");
-    expect(getDialogProperty(dialog, "accessError")).toBe("Selected-machine settings are not available on Lab Mac. Update and restart PI WEB on that machine, then try again.");
-    expect(getDialogProperty(dialog, "pluginError")).toBe("Selected-machine settings are not available on Lab Mac. Update and restart PI WEB on that machine, then try again.");
+    expect(getDialogProperty(dialog, "sessiondError")).toBe("Selected-machine settings are not available on Lab Mac. Update and restart Grok Web on that machine, then try again.");
+    expect(getDialogProperty(dialog, "accessError")).toBe("Selected-machine settings are not available on Lab Mac. Update and restart Grok Web on that machine, then try again.");
+    expect(getDialogProperty(dialog, "pluginError")).toBe("Selected-machine settings are not available on Lab Mac. Update and restart Grok Web on that machine, then try again.");
   });
 
   it("does not save remote selected-machine settings when runtime support is missing", async () => {
@@ -181,9 +181,9 @@ describe("settings-dialog session daemon machine targeting", () => {
     await callDialogPromise(dialog, "togglePlugin", "info", false);
 
     expect(saveSpy).not.toHaveBeenCalled();
-    expect(getDialogProperty(dialog, "sessiondError")).toBe("Selected-machine settings are not available on Lab Mac. Update and restart PI WEB on that machine, then try again.");
-    expect(getDialogProperty(dialog, "accessError")).toBe("Selected-machine settings are not available on Lab Mac. Update and restart PI WEB on that machine, then try again.");
-    expect(getDialogProperty(dialog, "pluginError")).toBe("Selected-machine settings are not available on Lab Mac. Update and restart PI WEB on that machine, then try again.");
+    expect(getDialogProperty(dialog, "sessiondError")).toBe("Selected-machine settings are not available on Lab Mac. Update and restart Grok Web on that machine, then try again.");
+    expect(getDialogProperty(dialog, "accessError")).toBe("Selected-machine settings are not available on Lab Mac. Update and restart Grok Web on that machine, then try again.");
+    expect(getDialogProperty(dialog, "pluginError")).toBe("Selected-machine settings are not available on Lab Mac. Update and restart Grok Web on that machine, then try again.");
   });
 
   it("shows selected-machine settings errors with the selected target name", async () => {

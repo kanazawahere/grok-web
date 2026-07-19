@@ -18,8 +18,8 @@ function piWebStatusResponse() {
     packageName: "@jmfederico/pi-web",
     generatedAt: "now",
     components: {
-      web: { component: "web", label: "PI WEB", available: true, stale: false },
-      sessiond: { component: "sessiond", label: "PI WEB Session Daemon", available: true, stale: false },
+      web: { component: "web", label: "Grok Web", available: true, stale: false },
+      sessiond: { component: "sessiond", label: "Grok Web Session Daemon", available: true, stale: false },
     },
     release: { packageName: "@jmfederico/pi-web", updateAvailable: false },
     commands: {},
@@ -49,7 +49,7 @@ afterEach(() => {
 });
 
 describe("machine-scoped runtime API", () => {
-  it("reads machine PI WEB status through the gateway route", async () => {
+  it("reads machine Grok Web status through the gateway route", async () => {
     const fetchMock = stubJsonFetch(piWebStatusResponse());
 
     await piWebApi.piWebStatus("remote a");

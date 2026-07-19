@@ -1,19 +1,56 @@
-import type { PiWebPlugin } from "@jmfederico/pi-web/plugin-api";
+import type { PiWebPlugin, PluginRuntimeContext } from "@jmfederico/pi-web/plugin-api";
 import { defineGrokDnaPanel } from "./panel.js";
+
+function sessionIdFrom(context: PluginRuntimeContext): string | undefined {
+  const session = context.state.selectedSession;
+  if (typeof session !== "object" || session === null) {
+    return undefined;
+  }
+  if (!("id" in session)) {
+    return undefined;
+  }
+  const id = session.id;
+  return typeof id === "string" && id !== "" ? id : undefined;
+}
+
+function workspacePathFrom(context: PluginRuntimeContext): string | undefined {
+  const path = context.state.selectedWorkspace?.path;
+  return path !== undefined && path !== "" ? path : undefined;
+}
+
+async function postPrompt(sessionId: string, text: string): Promise<void> {
+  await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/prompt`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+}
+
+async function readJson(res: Response): Promise<Record<string, unknown>> {
+  const text = await res.text();
+  if (text === "") {
+    return {};
+  }
+  try {
+    const parsed: unknown = JSON.parse(text);
+    if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+      const out: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(parsed)) {
+        out[k] = v;
+      }
+      return out;
+    }
+  } catch {
+    return { raw: text };
+  }
+  return {};
+}
 
 const plugin: PiWebPlugin = {
   apiVersion: 1,
   name: "Grok Lab (DNA)",
   activate: ({ pluginId, html, svg }) => {
     defineGrokDnaPanel();
-
-    const openLab = (context: { selectWorkspaceTool: (id: string) => void; state: { selectedWorkspace?: unknown } }) => {
-      if (context.state.selectedWorkspace === undefined) {
-        window.alert("Select a workspace first, then open Grok Lab.");
-        return;
-      }
-      context.selectWorkspaceTool(`${pluginId}:workspace.grok-lab`);
-    };
 
     return {
       contributions: {
@@ -25,7 +62,13 @@ const plugin: PiWebPlugin = {
             group: "Grok DNA",
             shortcut: "mod+shift+g",
             enabled: (context) => context.state.selectedWorkspace !== undefined,
-            run: (context) => openLab(context),
+            run: (context) => {
+              if (context.state.selectedWorkspace === undefined) {
+                window.alert("Select a workspace first, then open Grok Lab.");
+                return;
+              }
+              context.selectWorkspaceTool(`${pluginId}:workspace.grok-lab`);
+            },
           },
           {
             id: "grok.plan.on",
@@ -34,25 +77,23 @@ const plugin: PiWebPlugin = {
             group: "Grok DNA",
             enabled: (context) => context.state.selectedSession !== undefined,
             run: async (context) => {
-              const session = context.state.selectedSession as { id?: string } | undefined;
-              const workspace = context.state.selectedWorkspace as { path?: string } | undefined;
-              const sid = session?.id;
-              const ws = workspace?.path;
-              if (!sid) return;
+              const sid = sessionIdFrom(context);
+              const ws = workspacePathFrom(context);
+              if (sid === undefined) {
+                return;
+              }
               const res = await fetch("/api/grok-dna/plan", {
                 method: "POST",
                 headers: { "content-type": "application/json" },
                 body: JSON.stringify({ sessionId: sid, state: "active", workspacePath: ws }),
               });
-              const data = (await res.json()) as { injectPrompt?: string; planFile?: string };
-              if (data.injectPrompt) {
-                await fetch(`/api/sessions/${encodeURIComponent(sid)}/prompt`, {
-                  method: "POST",
-                  headers: { "content-type": "application/json" },
-                  body: JSON.stringify({ text: data.injectPrompt }),
-                });
+              const data = await readJson(res);
+              const inject = data["injectPrompt"];
+              if (typeof inject === "string" && inject !== "") {
+                await postPrompt(sid, inject);
               }
-              window.alert(data.planFile ? `Plan mode ON\n${data.planFile}` : "Plan mode ON");
+              const planFile = data["planFile"];
+              window.alert(typeof planFile === "string" ? `Plan mode ON\n${planFile}` : "Plan mode ON");
             },
           },
           {
@@ -62,16 +103,16 @@ const plugin: PiWebPlugin = {
             group: "Grok DNA",
             enabled: (context) => context.state.selectedSession !== undefined,
             run: async (context) => {
-              const session = context.state.selectedSession as { id?: string } | undefined;
-              const sid = session?.id;
-              if (!sid) return;
+              const sid = sessionIdFrom(context);
+              if (sid === undefined) {
+                return;
+              }
               const res = await fetch("/api/grok-dna/verify-prompt", { method: "POST", body: "{}" });
-              const data = (await res.json()) as { prompt?: string };
-              await fetch(`/api/sessions/${encodeURIComponent(sid)}/prompt`, {
-                method: "POST",
-                headers: { "content-type": "application/json" },
-                body: JSON.stringify({ text: data.prompt }),
-              });
+              const data = await readJson(res);
+              const prompt = data["prompt"];
+              if (typeof prompt === "string") {
+                await postPrompt(sid, prompt);
+              }
             },
           },
           {
@@ -81,12 +122,14 @@ const plugin: PiWebPlugin = {
             group: "Grok DNA",
             enabled: (context) => context.state.selectedSession !== undefined,
             run: async (context) => {
-              const session = context.state.selectedSession as { id?: string } | undefined;
-              const sid = session?.id;
-              if (!sid) return;
+              const sid = sessionIdFrom(context);
+              if (sid === undefined) {
+                return;
+              }
               const res = await fetch(`/api/grok-dna/export/${encodeURIComponent(sid)}`);
-              const data = (await res.json()) as { path?: string };
-              window.alert(data.path ? `Exported:\n${data.path}` : JSON.stringify(data).slice(0, 300));
+              const data = await readJson(res);
+              const path = data["path"];
+              window.alert(typeof path === "string" ? `Exported:\n${path}` : JSON.stringify(data).slice(0, 300));
             },
           },
           {
@@ -96,20 +139,20 @@ const plugin: PiWebPlugin = {
             group: "Grok DNA",
             enabled: (context) => context.state.selectedSession !== undefined,
             run: async (context) => {
-              const session = context.state.selectedSession as { id?: string } | undefined;
-              const sid = session?.id;
-              if (!sid) return;
+              const sid = sessionIdFrom(context);
+              if (sid === undefined) {
+                return;
+              }
               const res = await fetch("/api/grok-dna/compose-context", {
                 method: "POST",
                 headers: { "content-type": "application/json" },
                 body: JSON.stringify({ sessionId: sid }),
               });
-              const data = (await res.json()) as { prompt?: string };
-              await fetch(`/api/sessions/${encodeURIComponent(sid)}/prompt`, {
-                method: "POST",
-                headers: { "content-type": "application/json" },
-                body: JSON.stringify({ text: data.prompt }),
-              });
+              const data = await readJson(res);
+              const prompt = data["prompt"];
+              if (typeof prompt === "string") {
+                await postPrompt(sid, prompt);
+              }
             },
           },
         ],

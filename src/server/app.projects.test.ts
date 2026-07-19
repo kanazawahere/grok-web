@@ -83,7 +83,7 @@ describe("buildApp project routes", () => {
     expect(workspacesResponse.json<Workspace[]>()).toEqual([
       expect.objectContaining({
         projectId: project.id,
-        effectiveConfig: { uploads: { defaultFolder: ".pi-web/uploads" } },
+        effectiveConfig: { uploads: { defaultFolder: ".grok-web/uploads" } },
       }),
     ]);
   });

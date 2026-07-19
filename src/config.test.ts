@@ -16,8 +16,8 @@ afterEach(async () => {
   await rm(tempDir, { recursive: true, force: true });
 });
 
-describe("PI WEB config persistence", () => {
-  it("writes and reads the configured PI WEB config path", () => {
+describe("Grok Web config persistence", () => {
+  it("writes and reads the configured Grok Web config path", () => {
     const requestedConfig = {
       host: "0.0.0.0",
       port: 9000,
@@ -49,13 +49,13 @@ describe("PI WEB config persistence", () => {
   it("rejects invalid plugin config", async () => {
     await writeFile(configPath, `${JSON.stringify({ plugins: { info: { enabled: "no" } } }, null, 2)}\n`, "utf8");
 
-    expect(() => loadPiWebConfig(testOptions())).toThrow("PI WEB config plugin enabled values must be booleans");
+    expect(() => loadPiWebConfig(testOptions())).toThrow("Grok Web config plugin enabled values must be booleans");
   });
 
   it("rejects invalid path access config", async () => {
     await writeFile(configPath, `${JSON.stringify({ pathAccess: { allowedPaths: [""] } }, null, 2)}\n`, "utf8");
 
-    expect(() => loadPiWebConfig(testOptions())).toThrow("PI WEB config pathAccess.allowedPaths must be an array of non-empty strings");
+    expect(() => loadPiWebConfig(testOptions())).toThrow("Grok Web config pathAccess.allowedPaths must be an array of non-empty strings");
   });
 
   it("persists and reads maxUploadBytes", () => {
@@ -108,8 +108,8 @@ describe("PI WEB config persistence", () => {
   it("requires explicit state for alternate names and absolute Pi launchers", () => {
     const absolutePiCommand = join(tempDir, "bin", "pi");
     for (const command of ["acme-agent", absolutePiCommand]) {
-      expect(() => effectiveAgentConfig({}, { agent: { command } })).toThrow(`PI WEB config agent.dir or PI_WEB_AGENT_DIR is required when agent.command is ${JSON.stringify(command)}`);
-      expect(() => savePiWebConfig({ agent: { command } }, testOptions())).toThrow(`PI WEB config agent.dir or PI_WEB_AGENT_DIR is required when agent.command is ${JSON.stringify(command)}`);
+      expect(() => effectiveAgentConfig({}, { agent: { command } })).toThrow(`Grok Web config agent.dir or PI_WEB_AGENT_DIR is required when agent.command is ${JSON.stringify(command)}`);
+      expect(() => savePiWebConfig({ agent: { command } }, testOptions())).toThrow(`Grok Web config agent.dir or PI_WEB_AGENT_DIR is required when agent.command is ${JSON.stringify(command)}`);
     }
   });
 
@@ -160,7 +160,7 @@ describe("PI WEB config persistence", () => {
     expect(hasAgentSessionDirEnvOverride(env, "acme-agent")).toBe(false);
   });
 
-  it("uses explicit PI WEB agent directory env precedence", () => {
+  it("uses explicit Grok Web agent directory env precedence", () => {
     const env = {
       PI_WEB_AGENT_COMMAND: "acme-agent",
       PI_WEB_AGENT_DIR: join(tempDir, "web-env-agent"),
@@ -185,7 +185,7 @@ describe("PI WEB config persistence", () => {
 
     for (const command of ["acme-agent", join(tempDir, "bin", "pi")]) {
       expect(() => effectiveAgentConfig(env, { agent: { command } }))
-        .toThrow(`PI WEB config agent.dir or PI_WEB_AGENT_DIR is required when agent.command is ${JSON.stringify(command)}`);
+        .toThrow(`Grok Web config agent.dir or PI_WEB_AGENT_DIR is required when agent.command is ${JSON.stringify(command)}`);
     }
   });
 
@@ -199,8 +199,8 @@ describe("PI WEB config persistence", () => {
     const original = { agent: { command: "acme-agent", dir: join(tempDir, "agent"), futureSetting: true } };
     await writeFile(configPath, `${JSON.stringify(original, null, 2)}\n`, "utf8");
 
-    expect(() => loadPiWebConfig(testOptions())).toThrow('PI WEB config agent contains unknown key "futureSetting"');
-    expect(() => savePiWebConfig({ port: 9000 }, testOptions())).toThrow('PI WEB config agent contains unknown key "futureSetting"');
+    expect(() => loadPiWebConfig(testOptions())).toThrow('Grok Web config agent contains unknown key "futureSetting"');
+    expect(() => savePiWebConfig({ port: 9000 }, testOptions())).toThrow('Grok Web config agent contains unknown key "futureSetting"');
     expect(JSON.parse(await readFile(configPath, "utf8"))).toEqual(original);
   });
 
@@ -211,7 +211,7 @@ describe("PI WEB config persistence", () => {
   it("rejects upload defaults that are not workspace-relative", async () => {
     await writeFile(configPath, `${JSON.stringify({ uploads: { defaultFolder: "../outside" } }, null, 2)}\n`, "utf8");
 
-    expect(() => loadPiWebConfig(testOptions())).toThrow("PI WEB config uploads.defaultFolder must not contain path traversal");
+    expect(() => loadPiWebConfig(testOptions())).toThrow("Grok Web config uploads.defaultFolder must not contain path traversal");
   });
 });
 

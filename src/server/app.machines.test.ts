@@ -268,7 +268,7 @@ describe("buildApp machine routes", () => {
     });
 
     expect(response.statusCode).toBe(400);
-    expect(response.json<{ error: string }>().error).toContain("PI WEB selected-machine config key is not allowed: host");
+    expect(response.json<{ error: string }>().error).toContain("Grok Web selected-machine config key is not allowed: host");
     expect(requestJson).not.toHaveBeenCalled();
   });
 });

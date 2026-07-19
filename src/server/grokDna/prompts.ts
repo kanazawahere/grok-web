@@ -26,11 +26,13 @@ export function verifyPromptAddendum(): string {
   ].join("\n");
 }
 
-export function memoryContextBlock(notes: Array<{ text: string; tags: string[] }>): string {
-  if (notes.length === 0) return "";
+export function memoryContextBlock(notes: { text: string; tags: string[] }[]): string {
+  if (notes.length === 0) {
+    return "";
+  }
   const lines = notes.slice(0, 40).map((n, i) => {
-    const tag = n.tags.length ? ` [${n.tags.join(", ")}]` : "";
-    return `${i + 1}. ${n.text}${tag}`;
+    const tag = n.tags.length > 0 ? ` [${n.tags.join(", ")}]` : "";
+    return `${String(i + 1)}. ${n.text}${tag}`;
   });
   return [
     "## CROSS-SESSION MEMORY (Grok DNA)",
@@ -51,26 +53,13 @@ export function skillInjectBlock(name: string, content: string): string {
 
 export function bestOfNBranchPrompt(index: number, total: number, userTask: string): string {
   return [
-    `## BEST-OF-N BRANCH ${index}/${total} (Grok DNA)`,
+    `## BEST-OF-N BRANCH ${String(index)}/${String(total)} (Grok DNA)`,
     "You are one independent candidate solving the same task.",
     "Produce a complete, self-contained solution. Do not assume other branches exist.",
     "Be decisive; pick one coherent approach and execute it well.",
     "",
     "### Task",
     userTask,
-  ].join("\n");
-}
-
-export function pickBestPrompt(candidates: Array<{ id: string; label: string; summary: string }>): string {
-  const body = candidates
-    .map((c, i) => `### Candidate ${i + 1}: ${c.label} (session ${c.id})\n${c.summary}`)
-    .join("\n\n");
-  return [
-    "## PICK THE BEST (Grok DNA best-of-N judge)",
-    "Compare the candidate approaches below. Choose ONE winner.",
-    "Return: winner id, why, and what to keep/merge from losers.",
-    "",
-    body,
   ].join("\n");
 }
 

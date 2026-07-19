@@ -1,11 +1,11 @@
-# PI WEB Docker (beta)
+# Grok Web Docker (beta)
 
 This Docker setup is beta. It is useful for trusted local/server testing and development, but it may still have rough edges and is intentionally documented only here for now.
 
-PI WEB has two Docker modes:
+Grok Web has two Docker modes:
 
 - **Runtime/server mode** builds a local image from npm packages and runs split `sessiond` + `web` services. This is for users and servers.
-- **Development mode** builds from this checkout and runs the same split shape while letting the web/API/client services autoreload. This is for hacking on PI WEB.
+- **Development mode** builds from this checkout and runs the same split shape while letting the web/API/client services autoreload. This is for hacking on Grok Web.
 
 No prebuilt image or registry is required in either mode. The single human-facing Docker entrypoint is `pi-web-docker`: runtime mode is the default, and development mode is explicit with `--dev`.
 
@@ -13,15 +13,15 @@ No prebuilt image or registry is required in either mode. The single human-facin
 
 The Docker setup is for trusted single-user or trusted-admin environments. It is not a sandbox and it is not suitable for untrusted multi-tenant use.
 
-By design, the runtime containers get deliberate host access so PI WEB agents can work on real host paths:
+By design, the runtime containers get deliberate host access so Grok Web agents can work on real host paths:
 
 - `/var/run/docker.sock` is mounted into the containers. The Docker socket is root-equivalent on the Docker host.
 - On native Linux Docker Engine, existing `/home`, `/srv`, and `/opt` paths are mounted read/write, `/` is mounted read-only at `/host` for inspection, and `hostexec` can run explicit commands in the Linux host namespaces.
 - On Docker Desktop for Mac, existing `/Users`, `/Volumes`, and `/private` paths are mounted read/write. `hostexec` is disabled because Docker Desktop containers run inside a Linux VM and cannot enter native macOS namespaces.
 
-Only install this on machines where the PI WEB user, the selected workspaces, and the browser/API clients are trusted. Review scripts before piping them to `sh` if you do not already trust this repository.
+Only install this on machines where the Grok Web user, the selected workspaces, and the browser/API clients are trusted. Review scripts before piping them to `sh` if you do not already trust this repository.
 
-The web port is bound to `127.0.0.1` by default. Do **not** expose PI WEB directly to the public internet. For remote access, use one of:
+The web port is bound to `127.0.0.1` by default. Do **not** expose Grok Web directly to the public internet. For remote access, use one of:
 
 - an SSH tunnel;
 - a VPN/private network address such as Tailscale, NetBird, or WireGuard;
@@ -40,7 +40,7 @@ Prerequisites:
 
 The installer fails closed on unknown or unsupported Docker setups, such as remote Docker contexts, `DOCKER_HOST` overrides outside the supported local Unix socket, rootless/alternate Linux sockets, Docker Desktop for Linux, Colima, or OrbStack. It prints the detected host OS, Docker context, endpoint, `DOCKER_HOST`, socket source, and Docker OS before exiting, and it does not recreate services.
 
-The Docker bootstrap does not require Node.js or npm on the host. It only needs a supported Docker/Compose setup plus `curl` or `wget`; Node and PI WEB are installed inside the local Docker image.
+The Docker bootstrap does not require Node.js or npm on the host. It only needs a supported Docker/Compose setup plus `curl` or `wget`; Node and Grok Web are installed inside the local Docker image.
 
 Install with the bootstrap one-liner:
 
@@ -55,15 +55,15 @@ Defaults:
 - install directory: `~/.local/share/pi-web-docker` (or `$XDG_DATA_HOME/pi-web-docker`);
 - persistent data: `<install-dir>/data`, mounted at `/data`;
 - browser URL: <http://127.0.0.1:8504>;
-- npm packages: latest `@jmfederico/pi-web`; Pi Coding Agent is resolved as PI WEB's npm peer dependency (newest compatible version) and the peer-provided `pi` binary is linked into the image.
+- npm packages: latest `@jmfederico/pi-web`; Pi Coding Agent is resolved as Grok Web's npm peer dependency (newest compatible version) and the peer-provided `pi` binary is linked into the image.
 
-Updating recreates the Docker `sessiond` container. Active Pi agent runtimes in this Docker install may stop, so update while sessions are idle. Persisted PI WEB state, Pi config, and session history under the data directory are kept.
+Updating recreates the Docker `sessiond` container. Active Pi agent runtimes in this Docker install may stop, so update while sessions are idle. Persisted Grok Web state, Pi config, and session history under the data directory are kept.
 
-Inside the Docker runtime, the Updates panel uses `pi-web-docker` for status, update, and restart commands. Update and restart commands first start a detached helper container with the same Docker/host mounts and generated Compose environment, including the project name, ports/data paths, helper image, and generated UID/GID/Docker group. After scheduling the helper, the command streams that helper's logs inline and prints the `docker logs -f` command needed to reconnect. The helper still runs independently, so work continues even when `web`, `sessiond`, or the PI WEB terminal that launched the command exits.
+Inside the Docker runtime, the Updates panel uses `pi-web-docker` for status, update, and restart commands. Update and restart commands first start a detached helper container with the same Docker/host mounts and generated Compose environment, including the project name, ports/data paths, helper image, and generated UID/GID/Docker group. After scheduling the helper, the command streams that helper's logs inline and prints the `docker logs -f` command needed to reconnect. The helper still runs independently, so work continues even when `web`, `sessiond`, or the Grok Web terminal that launched the command exits.
 
 ### Command matrix
 
-From a production/runtime install directory, run `./pi-web-docker <command>`. From a checkout, run `./docker/pi-web-docker --dev <command>` for development mode. Inside PI WEB Docker containers and in the Updates panel, the command name is `pi-web-docker`; development commands include the explicit `--dev` flag, for example `pi-web-docker --dev status`.
+From a production/runtime install directory, run `./pi-web-docker <command>`. From a checkout, run `./docker/pi-web-docker --dev <command>` for development mode. Inside Grok Web Docker containers and in the Updates panel, the command name is `pi-web-docker`; development commands include the explicit `--dev` flag, for example `pi-web-docker --dev status`.
 
 | Command | Runtime/default | Development | Notes |
 | --- | --- | --- | --- |
@@ -80,7 +80,7 @@ From a production/runtime install directory, run `./pi-web-docker <command>`. Fr
 | `doctor` | `./pi-web-docker doctor` | `./docker/pi-web-docker --dev doctor` | Prints static Docker command diagnostics and generated asset paths. |
 | `cli` | `./pi-web-docker cli <pi-web args...>` | `./docker/pi-web-docker --dev cli <pi-web args...>` | Proxies the existing `pi-web` CLI in the `web` container. |
 
-Do not run `docker compose down -v` unless you intentionally want to remove Compose-managed volumes. The default persistent PI WEB data is a bind mount, but avoiding `-v` keeps the update/stop flow conservative.
+Do not run `docker compose down -v` unless you intentionally want to remove Compose-managed volumes. The default persistent Grok Web data is a bind mount, but avoiding `-v` keeps the update/stop flow conservative.
 
 ### Installer options
 
@@ -108,7 +108,7 @@ Common environment variables written to `.env`:
 | `PI_WEB_DOCKER_HOST_PROFILE`, `HOSTEXEC_MODE` | detected host profile and host-command capability toggle |
 | `PI_WEB_DOCKER_EXTRA_HOST_PATHS` | optional whitespace-separated existing absolute paths to bind-mount read/write at the same path |
 | `PI_WEB_BIND_ADDR`, `PI_WEB_PORT` | host bind address and port |
-| `PI_WEB_VERSION` | npm version/range for `@jmfederico/pi-web`; Pi Coding Agent resolves from PI WEB's npm peer dependency |
+| `PI_WEB_VERSION` | npm version/range for `@jmfederico/pi-web`; Pi Coding Agent resolves from Grok Web's npm peer dependency |
 | `PI_WEB_OPENSUSE_IMAGE` | openSUSE base image used for the runtime build |
 | `PI_WEB_NODEJS_MAJOR` | Node.js major package to install, defaulting to `22` |
 | `PI_WEB_NODEJS_REPO` | Node.js zypper repository URL, `auto`, or `disabled` |
@@ -136,7 +136,7 @@ You can also pass installer flags such as `--opensuse-image`, `--nodejs-major`, 
 
 ### Custom image hooks
 
-The runtime image can be extended without changing PI WEB's Dockerfile. Put local Bash scripts ending in `.sh` under:
+The runtime image can be extended without changing Grok Web's Dockerfile. Put local Bash scripts ending in `.sh` under:
 
 ```text
 ~/.local/share/pi-web-docker/custom-image.d/
@@ -171,7 +171,7 @@ Files in that development hook directory are ignored by Git except for the place
 
 ### Version pinning
 
-Pi Coding Agent is resolved from PI WEB's npm peer dependency, and Docker links the peer-provided `pi` binary into `PATH`. Pin the PI WEB npm package when you want to stay on a specific PI WEB release:
+Pi Coding Agent is resolved from Grok Web's npm peer dependency, and Docker links the peer-provided `pi` binary into `PATH`. Pin the Grok Web npm package when you want to stay on a specific Grok Web release:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/jmfederico/pi-web/main/docker/install.sh \
@@ -184,7 +184,7 @@ You can also edit `.env` in the install directory:
 PI_WEB_VERSION=1.202606.4
 ```
 
-Then rerun the one-liner to rebuild/recreate with that pin. Use `PI_WEB_VERSION=latest` when you want the runtime to track the newest PI WEB release and the newest Pi package compatible with PI WEB's peer dependency range.
+Then rerun the one-liner to rebuild/recreate with that pin. Use `PI_WEB_VERSION=latest` when you want the runtime to track the newest Grok Web release and the newest Pi package compatible with Grok Web's peer dependency range.
 
 To pin the Docker asset templates themselves, fetch the installer from a specific Git branch, tag, or commit and pass the same ref as the asset source:
 
@@ -216,11 +216,11 @@ If you use a reverse proxy, keep the container bound to localhost or a private a
 
 ## `hostexec` examples
 
-`hostexec [--root] <command...>` is the native Linux host command bridge provided by this Docker setup. It is enabled only for the `linux-native-docker` profile and intentionally does not abstract package managers or detect distributions. By default, commands run as the same numeric user/group as the PI WEB container. Use `--root` only for administrative host commands.
+`hostexec [--root] <command...>` is the native Linux host command bridge provided by this Docker setup. It is enabled only for the `linux-native-docker` profile and intentionally does not abstract package managers or detect distributions. By default, commands run as the same numeric user/group as the Grok Web container. Use `--root` only for administrative host commands.
 
 On Docker Desktop for Mac, `hostexec` exits with a clear disabled message because the Docker daemon and containers run inside a Linux VM, not in native macOS namespaces. Docker CLI and Docker Compose commands still work through the mounted Docker socket.
 
-Run it from a PI WEB session, a PI WEB terminal, or by execing into the runtime container on native Linux:
+Run it from a Grok Web session, a Grok Web terminal, or by execing into the runtime container on native Linux:
 
 ```bash
 hostexec uname -a
@@ -241,7 +241,7 @@ On native Linux, `hostexec` starts a temporary privileged helper container throu
 
 ## Development Docker setup
 
-Use this mode when developing PI WEB from this checkout. It bind-mounts the source tree, keeps dependencies in a Docker volume, stores PI WEB/Pi data in the same host data directory as runtime mode by default, and preserves the split runtime model:
+Use this mode when developing Grok Web from this checkout. It bind-mounts the source tree, keeps dependencies in a Docker volume, stores Grok Web/Pi data in the same host data directory as runtime mode by default, and preserves the split runtime model:
 
 - `sessiond` runs `npm run start:sessiond` as the long-lived owner of Pi agent runtimes;
 - `web` runs `npm run dev:web` and `npm run dev:client` so API, plugin, and Vite changes can autoreload without restarting `sessiond`.
@@ -305,7 +305,7 @@ Useful development commands:
 ./docker/pi-web-docker --dev stop
 ```
 
-Restart `sessiond` manually after changes that affect `src/server/sessiond.ts`, daemon ownership, or session-daemon-only code paths. Restarting only `web` is enough for ordinary API/client/plugin development reloads. Commands launched from the Updates panel use the same detached `pi-web-docker` helper as runtime mode, stream the helper's logs inline after it starts, and keep update/restart work running after the current PI WEB terminal or container exits. In both modes detached helpers load the generated Docker env and run as the generated `PI_WEB_UID:PI_WEB_GID` with the generated Docker group; development helpers still refuse UID 0 unless `--allow-root` is explicit.
+Restart `sessiond` manually after changes that affect `src/server/sessiond.ts`, daemon ownership, or session-daemon-only code paths. Restarting only `web` is enough for ordinary API/client/plugin development reloads. Commands launched from the Updates panel use the same detached `pi-web-docker` helper as runtime mode, stream the helper's logs inline after it starts, and keep update/restart work running after the current Grok Web terminal or container exits. In both modes detached helpers load the generated Docker env and run as the generated `PI_WEB_UID:PI_WEB_GID` with the generated Docker group; development helpers still refuse UID 0 unless `--allow-root` is explicit.
 
 The dev setup intentionally has the same Docker socket and profile-specific host mounts as the runtime setup. The same trust warnings apply. The command refuses to run development mode as UID 0, or to generate a dev env with `PI_WEB_UID=0`, unless you pass `--allow-root`; use that override only when root-owned checkout writes are intentional.
 
@@ -329,7 +329,7 @@ Set `PI_WEB_DOCKER_DATA_DIR=/some/path` for both modes if you want that shared d
 
 Use this shared directory to switch between runtime and dev mode, not to run both at the same time. Stop one Compose stack before starting the other so two session daemons do not share the same socket/state directory concurrently.
 
-For sessions to appear under the same workspace in both modes, use the same project path in PI WEB. On Linux, prefer host-mounted paths such as `/home/core/<repo>`, `/srv/<project>`, or `/opt/<project>`. On Mac, prefer paths under `/Users/<you>/...`. The dev container also exposes this checkout as `/workspace` so the PI WEB dev server can run from it, but sessions started against `/workspace` are organized under that different working-directory path and will not line up with runtime sessions for the host-mounted path.
+For sessions to appear under the same workspace in both modes, use the same project path in Grok Web. On Linux, prefer host-mounted paths such as `/home/core/<repo>`, `/srv/<project>`, or `/opt/<project>`. On Mac, prefer paths under `/Users/<you>/...`. The dev container also exposes this checkout as `/workspace` so the Grok Web dev server can run from it, but sessions started against `/workspace` are organized under that different working-directory path and will not line up with runtime sessions for the host-mounted path.
 
 Development startup keeps the persistent `node_modules` volume synchronized with the dependency tree built into the dev image. When `package.json`, `package-lock.json`, the Node image, or another dependency-build input changes, `start` or `update` rebuilds the image and `data-init` refreshes the volume before `sessiond` starts. Manual volume removal is not required.
 

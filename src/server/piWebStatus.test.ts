@@ -28,7 +28,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("PI WEB status", () => {
+describe("Grok Web status", () => {
   it("compares semver-shaped CalVer versions", () => {
     expect(comparePackageVersions("1.202605.9", "1.202605.8")).toBeGreaterThan(0);
     expect(comparePackageVersions("1.202605.8", "1.202605.8")).toBe(0);
@@ -47,7 +47,7 @@ describe("PI WEB status", () => {
 
     const status = await getPiWebVersionStatus(daemon);
 
-    expect(status.packageName).toBe("@jmfederico/pi-web");
+    expect(status.packageName).toBe("@atp/grok-web");
     expect(status.components.web.component).toBe("web");
     expect(status.components.sessiond.runtimeVersion).toBe("1.202605.7");
     expect(status).not.toHaveProperty("release");
@@ -176,14 +176,14 @@ describe("PI WEB status", () => {
       installedVersion: "1.202605.8",
       stale: true,
       available: true,
-      installation: { kind: "pi-package", source: "npm:@jmfederico/pi-web", scope: "user", path: "/tmp/pi-web" },
+      installation: { kind: "pi-package", source: "npm:@atp/grok-web", scope: "user", path: "/tmp/pi-web" },
     });
 
     const status = await getPiWebStatus(daemon, { forceReleaseCheck: true });
 
     expect(status.release.skipped).toBe(true);
     expect(status.components.sessiond.stale).toBe(true);
-    expect(status.components.sessiond.installation).toMatchObject({ kind: "pi-package", source: "npm:@jmfederico/pi-web", scope: "user" });
+    expect(status.components.sessiond.installation).toMatchObject({ kind: "pi-package", source: "npm:@atp/grok-web", scope: "user" });
     expect(status.messages.map((message) => message.id)).toContain("sessiond-stale");
   });
 
@@ -191,7 +191,7 @@ describe("PI WEB status", () => {
     const hasCommand = vi.fn(() => Promise.resolve(true));
 
     const updateCommand = await updateCommandFor(
-      { kind: "pi-package", source: "npm:@jmfederico/pi-web", scope: "user", path: "/tmp/pi-web" },
+      { kind: "pi-package", source: "npm:@atp/grok-web", scope: "user", path: "/tmp/pi-web" },
       "pi-web restart",
       { activeAgentProfile: undefined, hasCommand },
     );
@@ -204,7 +204,7 @@ describe("PI WEB status", () => {
     const command = "/tmp/agent's/pi";
     const dir = "/tmp/profile's/state";
     const updateCommand = await updateCommandFor(
-      { kind: "pi-package", source: "npm:@jmfederico/pi-web", scope: "user", path: "/tmp/pi-web" },
+      { kind: "pi-package", source: "npm:@atp/grok-web", scope: "user", path: "/tmp/pi-web" },
       "pi-web restart",
       {
         activeAgentProfile: activeProfile("a", command, dir),
@@ -212,7 +212,7 @@ describe("PI WEB status", () => {
       },
     );
 
-    expect(updateCommand).toBe("PI_CODING_AGENT_DIR='/tmp/profile'\\''s/state' '/tmp/agent'\\''s/pi' update 'npm:@jmfederico/pi-web' && pi-web restart");
+    expect(updateCommand).toBe("PI_CODING_AGENT_DIR='/tmp/profile'\\''s/state' '/tmp/agent'\\''s/pi' update 'npm:@atp/grok-web' && pi-web restart");
   });
 
   it.each([
@@ -222,7 +222,7 @@ describe("PI WEB status", () => {
     const hasCommand = vi.fn(() => Promise.resolve(true));
 
     const updateCommand = await updateCommandFor(
-      { kind: "pi-package", source: "npm:@jmfederico/pi-web", scope: "user", path: "/tmp/pi-web" },
+      { kind: "pi-package", source: "npm:@atp/grok-web", scope: "user", path: "/tmp/pi-web" },
       "pi-web restart",
       { activeAgentProfile: profile, hasCommand },
     );

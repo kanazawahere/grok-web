@@ -3,7 +3,7 @@ import { PI_WEB_CAPABILITIES } from "../../../shared/capabilities";
 import { parseCommandResult, parseFileContentResponse, parseFileSuggestion, parseGitStatusResponse, parseMachineRuntime, parseMessagePage, parsePiPackageMutationResponse, parsePiPackagesResponse, parsePiWebConfigResponse, parsePiWebPluginsResponse, parseSecureInputReceipt, parseSecureInputStatusResponse, parsePiWebRuntimeResponse, parsePiWebStatusResponse, parseSessionBulkArchiveResponse, parseSessionBulkDeleteArchivedResponse, parseSessionCleanupExecuteResponse, parseSessionCleanupPreviewResponse, parseSessionInfo, parseSessionStatus, parseSlashCommand, parseTerminalCommandRun, parseTerminalInfo, parseWorkspace, parseWorkspaceActivityResponse } from "./parsers";
 
 describe("API parsers", () => {
-  it("parses PI WEB config responses", () => {
+  it("parses Grok Web config responses", () => {
     expect(parsePiWebConfigResponse({
       path: "/tmp/config.json",
       exists: true,
@@ -26,7 +26,7 @@ describe("API parsers", () => {
     expect(() => parseSecureInputReceipt({ accepted: false })).toThrow("Invalid secure input receipt");
   });
 
-  it("parses PI WEB runtime responses including the daemon-owned active profile", () => {
+  it("parses Grok Web runtime responses including the daemon-owned active profile", () => {
     expect(parsePiWebRuntimeResponse({
       packageName: "@jmfederico/pi-web",
       generatedAt: "now",
@@ -94,7 +94,7 @@ describe("API parsers", () => {
       config: {},
       effectiveConfig: {},
       envOverrides: { host: false, port: false, allowedHosts: false, spawnSessions: false, subsessions: false, agentDirSource: "future" },
-    })).toThrow("Invalid PI WEB agentDirSource field");
+    })).toThrow("Invalid Grok Web agentDirSource field");
   });
 
   it("parses Pi package list and mutation responses", () => {
@@ -119,7 +119,7 @@ describe("API parsers", () => {
     expect(() => parsePiPackagesResponse({ packages: [{ source: "npm:@acme/tools", scope: "user", filtered: "no" }] })).toThrow("Expected boolean field: filtered");
   });
 
-  it("parses Docker PI WEB installation metadata", () => {
+  it("parses Docker Grok Web installation metadata", () => {
     const response = {
       packageName: "@jmfederico/pi-web",
       generatedAt: "now",
@@ -143,10 +143,10 @@ describe("API parsers", () => {
         ...response.components,
         web: { ...response.components.web, installation: { kind: "docker", dockerMode: "hidden" } },
       },
-    })).toThrow("Invalid PI WEB Docker mode");
+    })).toThrow("Invalid Grok Web Docker mode");
   });
 
-  it("parses PI WEB plugin status responses", () => {
+  it("parses Grok Web plugin status responses", () => {
     expect(parsePiWebPluginsResponse({
       plugins: [{ id: "info", module: "/pi-web-plugins/info/pi-web-plugin.js?v=1", source: "bundled", scope: "bundled", machineSpecific: true, enabled: false }],
     })).toEqual({

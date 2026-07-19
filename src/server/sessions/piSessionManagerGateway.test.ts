@@ -61,7 +61,7 @@ describe("SessionDirResolver", () => {
     expect(resolver.resolve(cwd)).toMatchObject({ source: "env", sessionDir: envDir, usesConfiguredSessionDir: true });
   });
 
-  it("uses PI WEB sessionDir environment overrides before settings", async () => {
+  it("uses Grok Web sessionDir environment overrides before settings", async () => {
     const envDir = join(tempDir, "pi-web-env-sessions");
     await mkdir(agentDir, { recursive: true });
     await writeFile(join(agentDir, "settings.json"), `${JSON.stringify({ sessionDir: join(tempDir, "settings-sessions") }, null, 2)}\n`, "utf8");
