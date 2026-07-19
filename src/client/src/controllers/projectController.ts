@@ -6,6 +6,10 @@ export function projectForDefaultPath<T extends { path: string }>(projects: read
   return defaultProjectPath === undefined ? undefined : projects.find((project) => project.path === defaultProjectPath);
 }
 
+export function shouldSelectDefaultProject(routeProjectId: string | undefined, selectedProject: unknown, defaultProjectPath: string | undefined): boolean {
+  return (routeProjectId === undefined || routeProjectId === "") && selectedProject === undefined && defaultProjectPath !== undefined;
+}
+
 export class ProjectController {
   constructor(private readonly getState: GetState, private readonly setState: SetState, private readonly workspaces: WorkspaceController) {}
 

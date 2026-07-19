@@ -10,7 +10,7 @@ import { AuthController } from "../controllers/authController";
 import { FileExplorerController } from "../controllers/fileExplorerController";
 import { GitController } from "../controllers/gitController";
 import { MachineController } from "../controllers/machineController";
-import { ProjectController, projectForDefaultPath } from "../controllers/projectController";
+import { ProjectController, projectForDefaultPath, shouldSelectDefaultProject } from "../controllers/projectController";
 import { PiWebStatusController } from "../controllers/piWebStatusController";
 import { SessionController } from "../controllers/sessionController";
 import { WorkspaceController, canDeleteWorkspace } from "../controllers/workspaceController";
@@ -283,7 +283,7 @@ export class PiWebApp extends LitElement {
     if (effectiveRoute !== route) this.replaceRouteAndClearWorkspaceQuery(effectiveRoute);
     await this.projects.loadProjects();
     await this.withChatScrollTransition(() => this.restoreRouteFor(effectiveRoute, false));
-    if (effectiveRoute.projectId === undefined && this.state.selectedProject === undefined && this.defaultProjectPath !== undefined) {
+    if (shouldSelectDefaultProject(effectiveRoute.projectId, this.state.selectedProject, this.defaultProjectPath)) {
       const defaultProject = projectForDefaultPath(this.state.projects, this.defaultProjectPath);
       if (defaultProject !== undefined) await this.workspaces.selectProject(defaultProject);
     }
