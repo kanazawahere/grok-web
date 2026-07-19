@@ -1,0 +1,41 @@
+{
+  "name": "@atp/grok-web",
+  "version": "0.1.0",
+  "description": "Web UI for persistent Grok coding-agent sessions in real workspaces (ATP). Architecture inspired by Pi Web; model brain = xAI Grok. Fleet door :2025 (OC :2023 · Pi :2024 · Grok :2025).",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "grok-web": "./dist/cli.js",
+    "grok-web-server": "./dist/server/index.js",
+    "grok-web-sessiond": "./dist/sessiond/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/copy-public.mjs",
+    "dev": "tsx watch src/server/index.ts",
+    "dev:sessiond": "tsx watch src/sessiond/index.ts",
+    "start": "node dist/server/index.js",
+    "start:sessiond": "node dist/sessiond/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/ws": "^8.5.13",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "atpDistribution": {
+    "channel": "atp-main",
+    "fleetPort": 2025,
+    "siblings": {
+      "opencode-web": 2023,
+      "pi-web": 2024,
+      "grok-web": 2025
+    }
+  }
+}

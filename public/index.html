@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Grok Web · ATP :2025</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar">
+      <header>
+        <div class="brand">Grok Web</div>
+        <div class="sub">:2025 · fleet door</div>
+      </header>
+      <button id="btn-new" type="button">+ New session</button>
+      <ul id="session-list"></ul>
+      <footer id="meta"></footer>
+    </aside>
+    <main id="main">
+      <section id="output" aria-label="assistant output"></section>
+      <section id="activity" aria-label="tools and status"></section>
+      <footer id="composer">
+        <textarea id="input" rows="3" placeholder="Message Grok… (Ctrl+Enter to send)"></textarea>
+        <div class="row">
+          <button id="btn-send" type="button">Send</button>
+          <button id="btn-stop" type="button" class="ghost">Stop</button>
+          <span id="conn" class="pill">connecting…</span>
+        </div>
+      </footer>
+    </main>
+  </div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
