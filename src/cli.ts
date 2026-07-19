@@ -118,7 +118,7 @@ function manualRunAdvice(): string {
   return [
     "Run PI WEB manually from a checkout:",
     "  npm run start:sessiond",
-    "  PI_WEB_PORT=8504 npm start",
+    "  GROK_WEB_PORT=2025 npm start",
     "",
     "For development in one terminal:",
     "  npm run dev",
@@ -167,7 +167,7 @@ function isLingerEnabled(): boolean | undefined {
 }
 
 function parseInstallOptions(args: string[]): InstallOptions {
-  const options: InstallOptions = { host: "127.0.0.1", port: "8504", mode: "production" };
+  const options: InstallOptions = { host: "127.0.0.1", port: "2025", mode: "production" };
   for (let i = 0; i < args.length; i += 1) {
     const arg = args[i];
     if (arg === undefined) continue;
@@ -1038,7 +1038,7 @@ function help(): void {
   console.log(`PI WEB
 
 Usage:
-  pi-web install [--dev] [--host 127.0.0.1] [--port 8504] [--config ~/.config/pi-web/config.json]
+  pi-web install [--dev] [--host 127.0.0.1] [--port 2025] [--config ~/.config/pi-web/config.json]
   pi-web uninstall
   pi-web start|stop|restart|status|logs
   pi-web doctor

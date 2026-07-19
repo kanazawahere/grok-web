@@ -44,11 +44,11 @@ export const DEFAULT_SECURE_INPUT_TIMEOUT_MS = 10_000;
 
 export function defaultPiWebConfigPath(env: NodeJS.ProcessEnv = process.env): string {
   const xdgConfigHome = env["XDG_CONFIG_HOME"];
-  return join(xdgConfigHome !== undefined && xdgConfigHome !== "" ? xdgConfigHome : join(homedir(), ".config"), "pi-web", "config.json");
+  return join(xdgConfigHome !== undefined && xdgConfigHome !== "" ? xdgConfigHome : join(homedir(), ".config"), "grok-web", "config.json");
 }
 
 export function defaultPiWebDataDir(): string {
-  return join(homedir(), ".pi-web");
+  return join(homedir(), ".grok-web");
 }
 
 /**
@@ -120,13 +120,13 @@ export function maxUploadBytes(env: NodeJS.ProcessEnv = process.env, config: PiW
 }
 
 export function piWebDataDir(env: NodeJS.ProcessEnv = process.env, cwd = process.cwd()): string {
-  const configured = env["PI_WEB_DATA_DIR"];
+  const configured = env["GROK_WEB_DATA_DIR"] ?? env["PI_WEB_DATA_DIR"];
   if (configured === undefined || configured === "") return defaultPiWebDataDir();
   return resolve(cwd, configured);
 }
 
 export function piWebConfigPath(env: NodeJS.ProcessEnv = process.env, cwd = process.cwd()): string {
-  const configured = env["PI_WEB_CONFIG"];
+  const configured = env["GROK_WEB_CONFIG"] ?? env["PI_WEB_CONFIG"];
   if (configured === undefined || configured === "") return defaultPiWebConfigPath(env);
   return resolve(cwd, configured);
 }
@@ -159,8 +159,8 @@ export function loadSecureInputConfig(options: LoadOptions = {}): SecureInputCon
 
 export function resolveEffectivePiWebConfig(loaded: LoadedPiWebConfig, options: LoadOptions = {}): LoadedEffectivePiWebConfig {
   const env = options.env ?? process.env;
-  const host = env["PI_WEB_HOST"];
-  const port = env["PI_WEB_PORT"] ?? env["PORT"];
+  const host = env["GROK_WEB_HOST"] ?? env["PI_WEB_HOST"];
+  const port = env["GROK_WEB_PORT"] ?? env["PI_WEB_PORT"] ?? env["PORT"];
   const allowedHosts = env["PI_WEB_ALLOWED_HOSTS"];
   const maxUpload = env["PI_WEB_MAX_UPLOAD_BYTES"];
   const agent = effectiveAgentConfig(env, loaded.config);
@@ -524,6 +524,6 @@ function isNonEmptyStringArray(value: unknown): value is string[] {
 }
 
 export function examplePiWebConfig(config: PiWebConfig = {}): string {
-  return `${JSON.stringify({ host: config.host ?? "127.0.0.1", port: config.port ?? 8504, allowedHosts: config.allowedHosts ?? [] }, null, 2)}\n`;
+  return `${JSON.stringify({ host: config.host ?? "127.0.0.1", port: config.port ?? 2025, allowedHosts: config.allowedHosts ?? [] }, null, 2)}\n`;
 }
 

@@ -65,7 +65,7 @@ function webVersionEndpoint(): { endpoint?: string; error?: string } {
   try {
     const { config } = effectivePiWebConfig();
     const host = httpClientHost(config.host);
-    const port = config.port ?? 8504;
+    const port = config.port ?? 2025;
     return { endpoint: `http://${urlHost(host)}:${String(port)}${PI_WEB_VERSION_ENDPOINT_PATH}` };
   } catch (error) {
     return { error: `could not read PI WEB config: ${errorMessage(error)}` };

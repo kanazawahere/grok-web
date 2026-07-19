@@ -1,16 +1,27 @@
 {
-  "name": "@jmfederico/pi-web",
+  "name": "@atp/grok-web",
   "version": "1.202607.0",
   "atpDistribution": {
-    "channel": "atp-stable",
+    "channel": "atp-stable-grok-web",
     "nativeToolImages": true,
-    "secureInput": true
+    "secureInput": true,
+    "product": "grok-web",
+    "fleetPort": 2025,
+    "siblings": {
+      "opencodeWeb": 2023,
+      "piWeb": 2024,
+      "grokWeb": 2025
+    },
+    "upstreamFork": "kanazawahere/pi-web@atp-stable"
   },
-  "description": "Web UI for persistent Pi Coding Agent sessions in real workspaces.",
+  "description": "Grok Web \u2014 full Pi Web UI (ATP downstream fork) with xAI Grok as primary coding-agent brain. Fleet door :2025 (OC :2023 \u00b7 Pi :2024 \u00b7 Grok :2025).",
   "license": "MIT",
   "author": "Federico Jaramillo Martinez",
   "type": "module",
   "bin": {
+    "grok-web": "dist/cli.js",
+    "grok-web-server": "dist/server/index.js",
+    "grok-web-sessiond": "dist/server/sessiond.js",
     "pi-web": "dist/cli.js",
     "pi-web-server": "dist/server/index.js",
     "pi-web-sessiond": "dist/server/sessiond.js"
@@ -83,13 +94,16 @@
     "marked": "^18.0.6",
     "node-pty": "^1.1.0",
     "typebox": "1.3.6",
-    "ws": "^8.21.0"
+    "ws": "^8.21.0",
+    "@earendil-works/pi-coding-agent": "0.80.3",
+    "@earendil-works/pi-ai": "0.80.3",
+    "@earendil-works/pi-agent-core": "0.80.3"
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.0",
-    "@earendil-works/pi-agent-core": "^0.80.6",
-    "@earendil-works/pi-ai": "^0.80.6",
-    "@earendil-works/pi-coding-agent": "^0.80.6",
+    "@earendil-works/pi-agent-core": "^0.80.3",
+    "@earendil-works/pi-ai": "^0.80.3",
+    "@earendil-works/pi-coding-agent": "^0.80.3",
     "@eslint/js": "^10.0.1",
     "@types/node": "^24.13.3",
     "@types/ws": "^8.18.1",
@@ -110,12 +124,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jmfederico/pi-web.git"
+    "url": "git+https://github.com/kanazawahere/grok-web.git"
   },
   "bugs": {
-    "url": "https://github.com/jmfederico/pi-web/issues"
+    "url": "https://github.com/kanazawahere/grok-web/issues"
   },
-  "homepage": "https://pi-web.dev/",
+  "homepage": "https://github.com/kanazawahere/grok-web",
   "packageManager": "npm@11.11.0",
   "peerDependencies": {
     "@earendil-works/pi-agent-core": ">=0.80.0 <1",
@@ -123,14 +137,18 @@
     "@earendil-works/pi-coding-agent": ">=0.80.0 <1"
   },
   "keywords": [
+    "grok-web",
+    "grok",
+    "xai",
+    "pi-web",
+    "coding-agent",
+    "atp",
     "pi-package",
     "pi",
-    "pi-web",
     "pi-web-ui",
     "pi-webui",
     "pi-coding-agent",
     "pi-coding-agent-web-ui",
-    "coding-agent",
     "ai-coding-agent",
     "agentic-development",
     "developer-tools",
@@ -145,5 +163,11 @@
       "./extensions"
     ],
     "image": "https://raw.githubusercontent.com/jmfederico/pi-web/main/docs/assets/pi-web-banner.png"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "node-pty@1.1.0": true,
+    "protobufjs@7.6.4": true,
+    "protobufjs@7.6.5": true
   }
 }
